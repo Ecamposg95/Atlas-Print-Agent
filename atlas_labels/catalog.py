@@ -100,6 +100,8 @@ def _read_xlsx(path: Path, sheet: str | None) -> list[Product]:
         wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
     except openpyxl.utils.exceptions.InvalidFileException as exc:
         raise CatalogError(f"No se pudo leer {path.name}: no es un libro de Excel válido.") from exc
+    except (zipfile.BadZipFile, KeyError) as exc:
+        raise CatalogError(f"No se pudo leer {path.name}: el archivo está dañado o no es un .xlsx válido.") from exc
     try:
         if sheet is not None:
             if sheet not in wb.sheetnames:
@@ -139,8 +141,6 @@ def read_catalog(path, sheet: str | None = None) -> list[Product]:
         raise CatalogError(
             f"No se pudo leer {p.name}: el archivo no está en UTF-8. Guárdalo como CSV UTF-8 desde Excel."
         ) from exc
-    except (zipfile.BadZipFile, KeyError) as exc:
-        raise CatalogError(f"No se pudo leer {p.name}: el archivo está dañado o no es un .xlsx válido.") from exc
     except OSError as exc:
         raise CatalogError(f"No se pudo leer {p.name}: {exc}") from exc
     raise CatalogError(f"Formato no soportado: {p.suffix}. Usa .xlsx o .csv")

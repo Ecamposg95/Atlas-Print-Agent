@@ -77,6 +77,14 @@ def test_build_label_variante_talla_color():
     assert ",56^" not in build_label(_p(size="", color=""))
 
 
+def test_build_label_variante_larga_se_recorta_a_384():
+    zpl = build_label(_p(size="Talla única extra grande", color="Verde esmeralda con detalles dorados y bordado"))
+    line = next(l for l in zpl.splitlines() if l.startswith("^FO12,56^"))
+    text = line.split("^FD", 1)[1].removesuffix("^FS")
+    assert text.endswith("..")
+    assert text_width(text, 15) <= 384
+
+
 def test_build_label_escapa_y_recorta_textos():
     zpl = build_label(_p(name="X" * 80, brand="Ma^rca"))
     assert "Ma rca" in zpl

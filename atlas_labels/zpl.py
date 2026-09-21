@@ -51,9 +51,11 @@ def build_label(product: Product, copies: int = 1, spec: BarcodeSpec | None = No
     if spec is None:
         raise ValueError(f"{product.sku or product.name}: sin código de barras")
 
-    size = fit_text(product.size, 15, 120)
-    color = fit_text(product.color, 15, 200)
-    variant = " / ".join(x for x in (size, color) if x)
+    variant = fit_text(
+        " / ".join(x for x in (zpl_safe(product.size), zpl_safe(product.color)) if x),
+        15,
+        TEXT_WIDTH,
+    )
 
     lines = [
         "^XA",

@@ -70,3 +70,15 @@ def test_list_printers_unix_parsea_lpstat(monkeypatch):
 def test_list_printers_unix_sin_lpstat(monkeypatch):
     monkeypatch.setattr(printer.shutil, "which", lambda c: None)
     assert list_printers() == []
+
+
+def test_send_raw_unix_timeout_da_printer_error(monkeypatch):
+    monkeypatch.setattr(printer.shutil, "which", lambda c: "/usr/bin/lp")
+
+    def slow(cmd, **kw):
+        raise subprocess.TimeoutExpired(cmd, kw.get("timeout", 30))
+
+    monkeypatch.setattr(printer.subprocess, "run", slow)
+    with pytest.raises(PrinterError) as exc:
+        send_raw("Zebra", b"x")
+    assert "no respondió" in str(exc.value)

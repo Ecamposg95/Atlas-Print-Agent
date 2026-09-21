@@ -114,6 +114,22 @@ def test_read_catalog_errores_de_archivo(tmp_path):
         read_catalog(bad)
 
 
+def test_read_csv_no_utf8_da_catalog_error(tmp_path):
+    path = tmp_path / "latin.csv"
+    path.write_bytes("SKU,Nombre\nA,Ni\xf1o\n".encode("latin-1"))
+    with pytest.raises(CatalogError) as exc:
+        read_catalog(path)
+    assert "UTF-8" in str(exc.value)
+
+
+def test_read_xlsx_corrupto_da_catalog_error(tmp_path):
+    path = tmp_path / "roto.xlsx"
+    path.write_bytes(b"esto no es un zip")
+    with pytest.raises(CatalogError) as exc:
+        read_catalog(path)
+    assert "roto.xlsx" in str(exc.value)
+
+
 def _products():
     return [
         Product(sku="A1", name="Blusa", brand="Miu Miu", barcode="111"),

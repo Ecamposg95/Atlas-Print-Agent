@@ -81,6 +81,14 @@ def test_build_label_sin_precio_omite_campo():
     assert "^FB150" not in zpl
 
 
+def test_build_label_precio_largo_se_recorta_al_ancho_de_su_caja():
+    zpl = build_label(_p(price=None, price_text="$123,456,789,012.00"))
+    line = next(l for l in zpl.splitlines() if "^FB150" in l)
+    payload = line.split("^FD", 1)[1].removesuffix("^FS")
+    assert payload.endswith("..")
+    assert text_width(payload, 22) <= 150
+
+
 def test_build_label_variante_talla_color():
     assert "^FDM / Negro^FS" in build_label(_p())
     assert "^FDNegro^FS" in build_label(_p(size=""))

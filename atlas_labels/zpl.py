@@ -71,7 +71,7 @@ def build_label(product: Product, copies: int = 1, spec: BarcodeSpec | None = No
         lines.append(f"^FO{MARGIN},56^A0N,15,15^FD{variant}^FS")
     lines.extend(_barcode_lines(spec))
     lines.append(f"^FO{MARGIN},168^A0N,14,14^FD{fit_text(product.sku, 14, SKU_WIDTH)}^FS")
-    price = zpl_safe(product.price_display)
+    price = fit_text(product.price_display, 22, PRICE_WIDTH)
     if price:
         x = LABEL_WIDTH - MARGIN - PRICE_WIDTH
         lines.append(f"^FO{x},162^A0N,22,22^FB{PRICE_WIDTH},1,0,R^FD{price}^FS")

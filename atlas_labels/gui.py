@@ -152,7 +152,10 @@ class App(tk.Tk):
         except Exception as exc:  # cualquier otro fallo de impresión no debe tumbar la app
             messagebox.showerror("Error inesperado al imprimir", f"{type(exc).__name__}: {exc}")
             return
-        save_settings({**load_settings(), "printer_name": printer})
+        try:
+            save_settings({**load_settings(), "printer_name": printer})
+        except OSError:
+            pass  # recordar la impresora es opcional
         msg = f"Enviadas {batch.total_labels} etiquetas de {len(batch.items)} productos a {printer}."
         self.status.set(msg)
         messagebox.showinfo("Enviado", msg)

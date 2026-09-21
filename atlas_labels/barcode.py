@@ -43,7 +43,7 @@ def code128_modules(data: str) -> int:
 
 
 def detect(text: str | None) -> BarcodeSpec | None:
-    cleaned = (text or "").strip().strip("*").strip()
+    cleaned = "".join(ch for ch in (text or "") if ch not in "*" and not ch.isspace())
     if not cleaned:
         return None
     if ean13_checksum_ok(cleaned):

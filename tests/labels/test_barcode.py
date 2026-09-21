@@ -64,3 +64,12 @@ def test_detect_codigo_largo_baja_a_modulo_1_y_advierte():
     spec = detect("ABCDEFGHIJKLMNOPQRST")  # 20 símbolos → 255 módulos → 510 dots
     assert spec.module_width == 1
     assert "angosto" in spec.warning
+
+
+def test_detect_solo_asteriscos_y_espacios_devuelve_none():
+    assert detect("* * *") is None
+    assert detect("***   ***   ***") is None
+
+
+def test_detect_quita_asteriscos_y_espacios_interiores():
+    assert detect("*1A4 3KE*").data == "1A43KE"

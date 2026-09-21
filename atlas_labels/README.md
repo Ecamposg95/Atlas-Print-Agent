@@ -47,6 +47,24 @@ Abre el catálogo, busca, selecciona varias filas (Ctrl o Shift), elige copias p
 
 Trece dígitos con checksum válido se imprimen como EAN-13; cualquier otro texto como Code 128 (se quitan asteriscos y espacios).
 
+## Uso en esta PC (Zebra por USB en Windows, repo abierto desde WSL)
+
+La impresora está conectada al host Windows, así que el CLI y la app deben correr con el **Python de Windows**, no con el de WSL. Desde una terminal de WSL:
+
+```bash
+cd /mnt/c/Users/ecamp/Devs/Atlas-Print-Agent
+python.exe -m pip install -r requirements-labels.txt      # una sola vez
+python.exe -m atlas_labels impresoras                     # debe listar "ZDesigner GX420t (EPL)"
+python.exe -m atlas_labels prueba --impresora "ZDesigner GX420t (EPL)"
+PYTHONIOENCODING=utf-8 python.exe -m atlas_labels imprimir "C:\Users\ecamp\Downloads\catalogo_2026-09-21.xlsx" --dry-run --impresora "ZDesigner GX420t (EPL)"
+python.exe -m atlas_labels.gui
+```
+
+- Las rutas de archivos van en formato Windows (`C:\...`) porque las abre el Python de Windows.
+- `PYTHONIOENCODING=utf-8` evita que los acentos salgan como `�` cuando la salida pasa por la terminal de WSL. Desde PowerShell no hace falta.
+- Para no escribir `--impresora` cada vez: `export ATLAS_LABELS_PRINTER="ZDesigner GX420t (EPL)"` en WSL, o `$env:ATLAS_LABELS_PRINTER="ZDesigner GX420t (EPL)"` en PowerShell. La app la guarda sola tras la primera impresión.
+- Antes de un lote grande corre siempre `--dry-run`: el export completo de Atlas One genera cientos de etiquetas (copias = Stock). Usa `--sku` o `--buscar` para acotar, o `--copias N` para fijar copias.
+
 ## Tests
 
 ```bash

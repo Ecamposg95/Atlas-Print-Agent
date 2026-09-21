@@ -40,7 +40,10 @@ def _list_unix() -> list[str]:
     lpstat = shutil.which("lpstat")
     if not lpstat:
         return []
-    result = subprocess.run([lpstat, "-a"], capture_output=True, timeout=5)
+    try:
+        result = subprocess.run([lpstat, "-a"], capture_output=True, timeout=5)
+    except subprocess.TimeoutExpired:
+        return []
     names = []
     for line in result.stdout.decode(errors="replace").splitlines():
         parts = line.split()
@@ -53,7 +56,10 @@ def _send_unix(name: str, data: bytes) -> None:
     lp = shutil.which("lp")
     if not lp:
         raise PrinterError("No se encontró el comando `lp`. Instala CUPS: sudo apt install cups-client")
-    result = subprocess.run([lp, "-d", name, "-o", "raw"], input=data, capture_output=True, timeout=30)
+    try:
+        result = subprocess.run([lp, "-d", name, "-o", "raw"], input=data, capture_output=True, timeout=30)
+    except subprocess.TimeoutExpired:
+        raise PrinterError(f"La impresora {name!r} no respondió a tiempo")
     if result.returncode != 0:
         detail = result.stderr.decode(errors="replace").strip()
         raise PrinterError(f"lp falló para {name!r}: {detail}")

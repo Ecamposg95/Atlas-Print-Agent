@@ -90,6 +90,9 @@ class App(tk.Tk):
         except CatalogError as exc:
             messagebox.showerror("No se pudo leer el catálogo", str(exc))
             return
+        except Exception as exc:  # cualquier otro fallo de lectura no debe tumbar la app
+            messagebox.showerror("Error inesperado al leer el catálogo", f"{type(exc).__name__}: {exc}")
+            return
         self.search_var.set("")
         self.apply_filter()
         self.status.set(f"{len(self.products)} productos cargados de {path}")
@@ -145,6 +148,9 @@ class App(tk.Tk):
             send_raw(printer, build_batch(batch.items).encode("utf-8"))
         except PrinterError as exc:
             messagebox.showerror("Error de impresión", str(exc))
+            return
+        except Exception as exc:  # cualquier otro fallo de impresión no debe tumbar la app
+            messagebox.showerror("Error inesperado al imprimir", f"{type(exc).__name__}: {exc}")
             return
         save_settings({**load_settings(), "printer_name": printer})
         msg = f"Enviadas {batch.total_labels} etiquetas de {len(batch.items)} productos a {printer}."

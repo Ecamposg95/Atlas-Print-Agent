@@ -24,6 +24,7 @@ Fase de diseño. El código nuevo todavía no existe. Lo que hay:
 | `legacy/tests/` | Tests autocontenidos de CORS y validación de nombres de cola, importados de Rmazh. Contra la base de Atlas One fallan 3 de 30 a propósito: marcan lo que Rmazh acepta (`BT:`, UNC) y Atlas One no. El agente unificado debe pasarlos todos. |
 | `docs/superpowers/specs/` | Diseño del proyecto unificado. |
 | `docs/reference/` | Notas de campo sobre CUPS y térmicas en Ubuntu, runbook de autoarranque y auditoría de impresión offline. |
+| `atlas_labels/` | Módulo de etiquetas ZPL para Zebra GX420t desde el catálogo Excel de Atlas One. CLI y app de escritorio. Independiente del agente; ver [`atlas_labels/README.md`](atlas_labels/README.md) y su [diseño](docs/superpowers/specs/2026-09-21-etiquetas-zebra-design.md). |
 
 ## Arquitectura (sin cambios respecto a v3)
 
@@ -57,6 +58,16 @@ uv run --no-project --with fastapi --with uvicorn --with pydantic --with cryptog
 ```
 
 Resultado esperado hoy: 27 pasan, 3 fallan (ver tabla de arriba).
+
+## Etiquetas Zebra desde Excel
+
+```bash
+pip install -r requirements-labels.txt
+python -m atlas_labels imprimir catalogo.xlsx --impresora "ZDesigner GX420t (EPL)" --dry-run
+python -m atlas_labels.gui
+```
+
+Detalles en [`atlas_labels/README.md`](atlas_labels/README.md).
 
 ## Siguientes pasos
 

@@ -71,13 +71,17 @@ class App(tk.Tk):
 
     def open_catalog(self):
         path = filedialog.askopenfilename(
-            filetypes=[("Catálogo", "*.xlsx *.csv"), ("Excel", "*.xlsx"), ("CSV", "*.csv")]
+            filetypes=[
+                ("Catálogo", "*.xlsx *.xlsm *.csv"),
+                ("Excel", "*.xlsx *.xlsm"),
+                ("CSV", "*.csv"),
+            ]
         )
         if not path:
             return
         try:
             sheet = None
-            if path.lower().endswith(".xlsx"):
+            if path.lower().endswith((".xlsx", ".xlsm")):
                 names = sheet_names(path)
                 if len(names) > 1:
                     sheet = simpledialog.askstring(

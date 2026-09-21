@@ -53,11 +53,11 @@ def test_detect_recorta_a_20_y_advierte():
     assert "recortado" in spec.warning
 
 
-def test_code128_modules_pares_de_digitos_cuentan_uno():
-    # 13 dígitos: 6 pares + 1 suelto = 7 símbolos → 11*7 + 35 = 112
-    assert code128_modules("2017000000014") == 112
-    # "1A43KE" → símbolos 1, A, 43, K, E = 5 → 11*5 + 35 = 90
-    assert code128_modules("1A43KE") == 90
+def test_code128_modules_cota_superior_subconjunto_b():
+    # 13 caracteres → 11*13 + 35 = 178 (cota superior, subconjunto B)
+    assert code128_modules("2017000000014") == 178
+    # "1A43KE" → 6 caracteres → 11*6 + 35 = 101
+    assert code128_modules("1A43KE") == 101
 
 
 def test_detect_codigo_largo_baja_a_modulo_1_y_advierte():

@@ -42,7 +42,7 @@ def _barcode_lines(spec: BarcodeSpec) -> list[str]:
     if spec.kind == "EAN13":
         lines.append(f"^BEN,{BARCODE_HEIGHT},Y,N^FD{spec.data}^FS")
     else:
-        lines.append(f"^BCN,{BARCODE_HEIGHT},Y,N,N^FD{spec.data}^FS")
+        lines.append(f"^BCN,{BARCODE_HEIGHT},Y,N,N,A^FD{spec.data}^FS")
     return lines
 
 

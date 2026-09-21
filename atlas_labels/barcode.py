@@ -30,16 +30,8 @@ def ean13_checksum_ok(digits: str) -> bool:
 
 
 def code128_modules(data: str) -> int:
-    """Módulos estimados: pares de dígitos cuentan como un símbolo (subconjunto C)."""
-    symbols = 0
-    i = 0
-    while i < len(data):
-        if data[i].isdigit() and i + 1 < len(data) and data[i + 1].isdigit():
-            i += 2
-        else:
-            i += 1
-        symbols += 1
-    return 11 * symbols + 35
+    """Cota superior: subconjunto B, 11 módulos por carácter más inicio, verificación y paro."""
+    return 11 * len(data) + 35
 
 
 def detect(text: str | None) -> BarcodeSpec | None:

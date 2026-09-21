@@ -58,7 +58,17 @@ def test_build_label_ean13_usa_be_y_centra():
 
 def test_build_label_code128_usa_bc_con_texto_limpio():
     zpl = build_label(_p(barcode="*1A43KE*"))
-    assert "^BCN,48,Y,N,N^FD1A43KE^FS" in zpl
+    assert "^BCN,48,Y,N,N,A^FD1A43KE^FS" in zpl
+
+
+def test_build_label_code128_de_13_digitos_cabe_en_la_etiqueta():
+    from atlas_labels.barcode import detect
+
+    spec = detect("2017000000014")  # checksum inválido → Code 128
+    zpl = build_label(_p(barcode="2017000000014"))
+    line = next(l for l in zpl.splitlines() if ",76^BY" in l)
+    x = int(line[len("^FO"):].split(",", 1)[0])
+    assert x + spec.width_dots <= LABEL_WIDTH
 
 
 def test_build_label_precio_alineado_a_la_derecha_con_fb():

@@ -92,14 +92,14 @@ class Product:
 
 `detect(text) -> BarcodeSpec | None`:
 
-1. Se limpia el texto: quitar espacios y asteriscos en extremos.
+1. Se limpia el texto: quitar todos los asteriscos y espacios en blanco, en cualquier posición.
 2. Trece dígitos con checksum EAN válido → `EAN13`.
-3. Cualquier otro texto no vacío → `CODE128` con los caracteres imprimibles ASCII (32 a 126); se descartan los demás. Máximo 20 caracteres; si excede, se recorta y se reporta como advertencia.
+3. Cualquier otro texto no vacío → `CODE128` con los caracteres imprimibles ASCII (33 a 126); se descartan los demás. Máximo 20 caracteres; si excede, se recorta y se reporta como advertencia.
 4. Vacío → `None`. La fila se omite en la impresión y se reporta como "sin código".
 
 Trece dígitos con checksum inválido van a Code 128, no fallan.
 
-Ancho del Code 128: se estima en módulos como `11 * simbolos + 35`, donde los dígitos en pares cuentan como un símbolo (subconjunto C) y el resto uno por carácter, más 3 símbolos de inicio, verificación y paro. Si `modulos * 2` cabe en 380 dots se usa `^BY2`; si no, `^BY1` y se reporta advertencia de que el código puede costar trabajo escanear. EAN-13 siempre va en `^BY2` (95 módulos = 190 dots).
+Ancho del Code 128: se estima en módulos con la cota superior del subconjunto B, `11 * caracteres + 35` (11 módulos por carácter más inicio, verificación y paro). Si `modulos * 2` cabe en 380 dots se usa `^BY2`; si no, `^BY1` y se reporta advertencia de que el código puede costar trabajo escanear. El comando usa el modo automático (`A`) para que la impresora empaque las corridas de dígitos en subconjunto C cuando pueda, así el ancho real nunca supera la estimación. EAN-13 siempre va en `^BY2` (95 módulos = 190 dots).
 
 ## 6. ZPL (`zpl.py`)
 
@@ -112,7 +112,7 @@ Layout (misma jerarquía que el prototipo):
 | 8 | marca | A0N,22,22 | 384 |
 | 34 | nombre | A0N,18,18 | 384 |
 | 56 | talla / color (se omite si ambos vacíos) | A0N,15,15 | 384 |
-| 76 | barcode con texto legible, alto 48, `^BY2` | EAN-13: `^BEN,48,Y,N`; Code 128: `^BCN,48,Y,N,N` | |
+| 76 | barcode con texto legible, alto 48, `^BY2` | EAN-13: `^BEN,48,Y,N`; Code 128: `^BCN,48,Y,N,N,A` | |
 | 168 | SKU | A0N,14,14 | 240 |
 | 162 | precio, alineado a la derecha con `^FB150,1,0,R` | A0N,22,22 | 150 |
 

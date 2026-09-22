@@ -45,28 +45,60 @@ copiado en dos productos y las copias divergieron; repetir ese error con los cod
 exactamente la misma historia, con la diferencia de que un código de barras mal generado no se ve hasta que la
 tienda no puede cobrar.
 
-## 4. Lo que hay que averiguar antes de diseñar nada
+## 4. Lo que expone la API de Atlas One
 
-**No se sabe qué expone la API de Atlas One.** El dueño no lo tenía claro el 2026-09-22 y el repo de Atlas One
-**no está en esta máquina** (`app.atlasone.com.mx`, repositorio aparte; `Atlas-Rmazh` es el POS de otro cliente,
-no sirve como referencia).
+Averiguado el 2026-09-22 leyendo `https://app.atlasone.com.mx/openapi.json` (el dueño lo descargó; el repo de
+Atlas One **no está en esta máquina** — `Atlas-Rmazh` es el POS de otro cliente y no sirve de referencia).
 
-Primer paso de quien retome esto — pedir al dueño que corra esto, o correrlo si hay acceso:
+**Existe un export hecho para etiquetas.** No hay que inventar nada:
+
+| Endpoint | Para qué |
+|---|---|
+| `GET /api/products/export/labels.csv` | **El que importa.** Parámetros: `product_id` (opcional, uno solo), `only_with_stock` (bool, default `false`), cabecera `X-Organization-ID` |
+| `GET /api/products/` | Listado paginado (`skip`/`limit`, default 100) con filtros por sucursal, marca y departamento |
+| `GET /api/products/search` | Búsqueda (`q`), paginada |
+| `GET /api/products/export/excel` | El export de catálogo completo — el `.xlsx` que hoy se descarga a mano |
+| `GET /api/products/barcodes/missing-count`<br>`POST /api/products/barcodes/assign-missing` | Contar y asignar códigos de barras faltantes |
+
+`atlas_labels` **ya lee CSV**, así que `labels.csv` se puede consumir con el `catalog.py` de hoy, sin cliente
+nuevo. `only_with_stock=true` encaja además con que las copias por omisión sean la existencia.
+
+> **Pendiente menor:** en este repo hay una nota de que asignar los códigos internos de la serie
+> `2017000000xxx` era un trámite manual en Atlas One. Con `assign-missing` en la API puede que ya no lo sea.
+> **Hay que verificarlo** —incluyendo si respeta esa serie— antes de seguir repitiendo la instrucción vieja.
+
+### 4.1 Autenticación: el punto incómodo
+
+El único esquema de seguridad declarado es **`OAuth2PasswordBearer`** con `tokenUrl: /api/auth/login`. El login
+es `POST` en `application/x-www-form-urlencoded` con `username` y `password`, y devuelve `TokenWithUser`:
+`access_token`, más `organization` (con su `id`, que es justo lo que pide la cabecera `X-Organization-ID`) y
+`branch`.
+
+**Atlas One sí tiene llaves de API** — `/api/platform/api-keys`, con `scopes`, listado por organización y
+revocación. **Pero ningún endpoint del esquema declara una cabecera de API key**, y el único esquema de
+seguridad es el bearer. Leído literalmente, eso significaría que una app de escritorio tendría que guardar
+**usuario y contraseña** del dueño en una PC de almacén para poder renovar el token, que es un riesgo que no se
+debe normalizar.
+
+**Falta comprobarlo empíricamente**, porque el esquema no puede contestarlo: **¿se acepta una llave de API como
+bearer?** Es un patrón común y no aparecería documentado. La prueba:
 
 ```bash
-curl -s https://app.atlasone.com.mx/openapi.json | python3 -m json.tool | grep -iE '"/api/.*(product|catalog|inventor)'
+curl -s -o labels.csv -w "HTTP %{http_code}\n" \
+  -H "Authorization: Bearer <LLAVE_DE_API>" \
+  "https://app.atlasone.com.mx/api/products/export/labels.csv?only_with_stock=true"
 ```
 
-Y con ello contestar tres preguntas, que son las que deciden el diseño:
+- **200** → la app guarda una llave revocable con permisos acotados. Camino A despejado, sin tocar Atlas One.
+- **401** → hay que pedir en Atlas One que las llaves sirvan para autenticar estos endpoints (§7). Mientras
+  tanto, **no** guardar la contraseña del dueño: es preferible dejar la carga desde Excel y esperar.
 
-1. ¿Hay un endpoint que liste productos con los campos que la etiqueta necesita — SKU, código de barras, marca,
-   nombre, departamento, talla, color, precio, existencia?
-2. ¿Se puede autenticar un programa externo (token/llave), o todo está detrás de la cookie de sesión del
-   navegador?
-3. ¿Hay paginación, y cuántos productos son? (El catálogo de referencia ronda los miles de filas.)
+### 4.2 Lo único que sigue sin saberse
 
-**Si la respuesta a 1 o 2 es que no,** el trabajo se convierte en "agregar eso en Atlas One", que es un cambio en
-otro repo y se documenta (§7), no se hace desde aquí.
+**Qué columnas trae `labels.csv`.** El esquema no lo dice (el endpoint devuelve un archivo). Hay que descargar
+uno y mirar su primera línea, y compararlo con lo que `catalog.map_columns()` espera: SKU, código de barras,
+marca, nombre, departamento, talla, color, precio y existencia. Si faltan columnas, la diferencia se pide en
+Atlas One (§7) o se rellena desde `/api/products/`.
 
 ## 5. Camino A — la app local trae el catálogo sola
 
@@ -74,13 +106,20 @@ otro repo y se documenta (§7), no se hace desde aquí.
 
 Qué tocar en este repo:
 
+Con lo averiguado en el §4, es **más corto de lo que parecía**: `labels.csv` ya existe y `atlas_labels` ya lee
+CSV. No hace falta un cliente de catálogo, solo una descarga autenticada que deje el archivo en disco y siga el
+camino de hoy.
+
 | Archivo | Cambio |
 |---|---|
-| `atlas_labels/source.py` (nuevo) | Cliente HTTP del catálogo de Atlas One: autenticación, paginación, y traducción de la respuesta a `list[Product]` |
-| `atlas_labels/catalog.py` | Nada de red aquí. `rows_to_products()` y el mapeo de columnas ya existen y se reutilizan; `source.py` los alimenta |
-| `atlas_labels/settings.py` | Guardar la URL base y el token, junto a `printer_name` y `last_catalog_dir` |
-| `atlas_labels/gui.py` | Un botón "Actualizar desde Atlas One" al lado de "Abrir catálogo". El Excel **sigue funcionando igual** |
+| `atlas_labels/source.py` (nuevo) | Descarga autenticada de `labels.csv`: bearer, `X-Organization-ID`, y guardar el archivo. Nada de parseo: eso ya lo hace `catalog.py` |
+| `atlas_labels/catalog.py` | **Sin cambios** si las columnas coinciden (§4.2). `map_columns()` y `rows_to_products()` se reutilizan tal cual |
+| `atlas_labels/settings.py` | Guardar URL base, credencial y `organization_id`, junto a `printer_name` y `last_catalog_dir` |
+| `atlas_labels/gui.py` | Un botón "Actualizar desde Atlas One" al lado de "Abrir catálogo". El Excel **sigue funcionando igual**, y la carga automática de `discovery.py` tampoco cambia |
 | `tests/labels/test_source.py` (nuevo) | Con respuestas HTTP de mentira, nunca contra la API real |
+
+**No empezar esto hasta resolver el §4.1.** Si las llaves de API no sirven como bearer, la alternativa sería
+guardar la contraseña del dueño en la PC de almacén, y eso no compensa ahorrarse una exportación manual.
 
 **La frontera que no se cruza:** ningún módulo de lógica hace red, igual que hoy ninguno importa Tkinter ni toca
 la impresora. `source.py` es la única frontera nueva, como `printer.py` es la de la impresora.
@@ -125,11 +164,10 @@ que desplegar y vigilar, para 331 líneas de lógica pura sin estado.
 cambiar allá se documenta aquí y lo ejecuta alguien en ese repo. Esto aplica aunque el repo esté en la misma
 máquina.
 
-Ninguno de estos cambios se puede detallar más hasta contestar las preguntas del §4. Lo que **sí** se sabe:
-
 | Repo | Qué habría que hacer | Cuándo |
 |---|---|---|
-| `atlas-one` (backend) | Un endpoint de catálogo consumible por un programa externo, con autenticación por token, paginado, devolviendo los campos que la etiqueta necesita (§4.1). **Puede que ya exista** — comprobar antes de construir nada | Requisito del camino A |
+| `atlas-one` (backend) | **Solo si la prueba del §4.1 devuelve 401:** aceptar las llaves de `/api/platform/api-keys` como credencial en `/api/products/export/labels.csv` (y, idealmente, en `/api/products/*`). Hoy el único esquema es el bearer de sesión, lo que obligaría a guardar la contraseña del dueño en una PC de almacén | Requisito del camino A |
+| `atlas-one` (backend) | **Solo si faltan columnas** en `labels.csv` (§4.2): agregar las que la etiqueta necesita y no vengan | Requisito del camino A |
 | `atlas-one` (backend) | Declarar `atlas_labels` como dependencia y llamar a `zpl.build_label()`. **Nunca reimplementar los codificadores de barras** (§3) | Requisito del camino B1 |
 | `atlas-one` (frontend) | Pantalla de selección de productos que arme el lote y mande el ZPL al agente por `POST https://localhost:9100/print`. El contrato está en [`integracion-agentes.md`](integracion-agentes.md) | Requisito del camino B |
 | `atlas-one` (frontend) | La Zebra aparece en `/printers` junto a las térmicas de ticket. Hay que **dejar elegir cuál es cuál**: mandar ZPL a una térmica de tickets imprime basura, y al revés también | Requisito del camino B |
@@ -147,6 +185,7 @@ Ninguno de estos cambios se puede detallar más hasta contestar las preguntas de
 | | |
 |---|---|
 | Hecho | Carga automática del catálogo más reciente y aviso de antigüedad (`discovery.py`, commit `c4fa237`) |
+| Hecho | Averiguado qué expone la API de Atlas One (§4): `labels.csv` ya existe, y el camino A se acorta a una descarga autenticada |
 | Decidido | Los dos caminos conviven; `zpl`/`barcode`/`render` se quedan aquí como única fuente de verdad |
-| Bloqueado | Todo lo demás, hasta contestar las tres preguntas del §4 sobre la API de Atlas One |
-| Siguiente paso | Correr el `curl` del §4 y, con la respuesta, diseñar el camino A con la skill de brainstorming |
+| Bloqueado | El camino A, por dos cosas: si una llave de API sirve como bearer (§4.1) y qué columnas trae el CSV (§4.2). **Ambas se contestan con un solo `curl`** |
+| Siguiente paso | Correr el `curl` del §4.1 con una llave de API y, con el resultado, diseñar el camino A con la skill de brainstorming |

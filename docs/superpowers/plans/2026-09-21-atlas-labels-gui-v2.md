@@ -238,7 +238,7 @@ def test_encode_code128_ab_en_subconjunto_b_con_checksum():
 def test_encode_code128_solo_digitos_pares_empieza_en_c():
     bits = encode_code128("1234")
     assert bits.startswith(_bits(START_C) + _bits(12) + _bits(34))
-    assert len(bits) == 5 * 11 + 13
+    assert len(bits) == 4 * 11 + 13  # START C, 12, 34, check + STOP
 
 
 def test_encode_code128_corrida_impar_pone_primer_digito_en_b():

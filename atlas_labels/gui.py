@@ -5,8 +5,12 @@ from __future__ import annotations
 import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog, ttk
 
+from datetime import date
+from pathlib import Path
+
 from .batch import plan_items
 from .catalog import CatalogError, read_catalog, select, sheet_names
+from .discovery import catalog_date, default_search_dirs, describe_age, find_latest_catalog
 from .printer import PrinterError, list_printers, send_raw
 from .render import draw
 from .settings import load_settings, resolve_printer, save_settings
@@ -20,6 +24,8 @@ COLUMN_WIDTHS = {
 ALL = "Todos"
 GENDER_LABELS = {"Hombre / sin especificar": "Hombre", "Mujer": "Mujer"}
 PREVIEW_PAD = 10
+# Color de la antigüedad del catálogo: imprimir con uno viejo saca precios que ya cambiaron.
+AGE_COLORS = {"ok": "", "aviso": "#b26a00", "viejo": "#b00020"}
 
 
 class App(tk.Tk):
@@ -43,6 +49,9 @@ class App(tk.Tk):
         top = ttk.Frame(self, padding=10)
         top.pack(fill="x")
         ttk.Button(top, text="Abrir catálogo", command=self.open_catalog).pack(side="left")
+        self.catalog_info = tk.StringVar(value="")
+        self.catalog_info_label = ttk.Label(top, textvariable=self.catalog_info)
+        self.catalog_info_label.pack(side="left", padx=(8, 0))
         ttk.Label(top, text=" Impresora:").pack(side="left")
         self.printer_var = tk.StringVar(value=resolve_printer() or "")
         try:
@@ -110,8 +119,24 @@ class App(tk.Tk):
         ttk.Label(self, textvariable=self.status, padding=(10, 0, 10, 6)).pack(fill="x")
 
         self.after(50, self.update_preview)
+        self.after(100, self.autoload_latest)
 
     # --- catálogo y filtros -------------------------------------------------
+
+    def autoload_latest(self):
+        """Carga sola el catálogo más reciente que encuentre, sin preguntar nada.
+
+        Si el libro trae varias hojas usa la primera, igual que el CLI; quien
+        necesite otra la elige con "Abrir catálogo".
+        """
+        try:
+            latest = find_latest_catalog(
+                default_search_dirs(last_used=load_settings().get("last_catalog_dir"))
+            )
+        except Exception:  # descubrir el catálogo nunca debe impedir que la app abra
+            return
+        if latest is not None:
+            self._load_catalog(str(latest), sheet=None, quiet=True)
 
     def open_catalog(self):
         path = filedialog.askopenfilename(
@@ -123,24 +148,39 @@ class App(tk.Tk):
         )
         if not path:
             return
-        try:
-            sheet = None
-            if path.lower().endswith((".xlsx", ".xlsm")):
+        sheet = None
+        if path.lower().endswith((".xlsx", ".xlsm")):
+            try:
                 names = sheet_names(path)
-                if len(names) > 1:
-                    sheet = simpledialog.askstring(
-                        "Hoja", f"Hojas disponibles: {', '.join(names)}\nEscribe el nombre de la hoja:",
-                        initialvalue=names[0], parent=self,
-                    )
-                    if sheet is None:
-                        return
+            except Exception as exc:
+                messagebox.showerror("No se pudo leer el catálogo", f"{type(exc).__name__}: {exc}")
+                return
+            if len(names) > 1:
+                sheet = simpledialog.askstring(
+                    "Hoja", f"Hojas disponibles: {', '.join(names)}\nEscribe el nombre de la hoja:",
+                    initialvalue=names[0], parent=self,
+                )
+                if sheet is None:
+                    return
+        self._load_catalog(path, sheet)
+
+    def _load_catalog(self, path: str, sheet: str | None, quiet: bool = False):
+        """`quiet` calla los errores: en la carga automática el archivo no lo eligió nadie."""
+        try:
             self.products = read_catalog(path, sheet)
         except CatalogError as exc:
-            messagebox.showerror("No se pudo leer el catálogo", str(exc))
+            if not quiet:
+                messagebox.showerror("No se pudo leer el catálogo", str(exc))
             return
         except Exception as exc:  # cualquier otro fallo de lectura no debe tumbar la app
-            messagebox.showerror("Error inesperado al leer el catálogo", f"{type(exc).__name__}: {exc}")
+            if not quiet:
+                messagebox.showerror("Error inesperado al leer el catálogo", f"{type(exc).__name__}: {exc}")
             return
+        self._show_catalog_age(path)
+        try:
+            save_settings({**load_settings(), "last_catalog_dir": str(Path(path).parent)})
+        except OSError:
+            pass  # no poder recordar la carpeta no es motivo para no imprimir
         self.copies = {id(p): p.stock for p in self.products}
         departments = sorted({p.department.strip() for p in self.products if p.department.strip()})
         self.department_box["values"] = (ALL, *departments)
@@ -149,6 +189,16 @@ class App(tk.Tk):
         self.search_var.set("")
         self.apply_filter()
         self.status.set(f"{len(self.products)} productos cargados de {path}")
+
+    def _show_catalog_age(self, path: str):
+        """Deja visible de cuándo es el catálogo, en color si ya tiene días."""
+        try:
+            texto, severidad = describe_age(catalog_date(path), hoy=date.today())
+        except OSError:
+            self.catalog_info.set("")
+            return
+        self.catalog_info.set(f"Catálogo {texto}")
+        self.catalog_info_label.configure(foreground=AGE_COLORS.get(severidad, ""))
 
     def _filters(self) -> dict:
         department = self.department_var.get()

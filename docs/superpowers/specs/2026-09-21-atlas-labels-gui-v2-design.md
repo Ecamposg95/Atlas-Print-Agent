@@ -33,7 +33,7 @@ Se añaden dos codificadores puros que devuelven la secuencia de módulos como c
 - `encode_ean13(digits: str) -> str`: 13 dígitos con checksum válido → 95 módulos (guardas 101, 6 dígitos izquierdos con paridad según el primer dígito, guarda central 01010, 6 derechos en R, guarda 101).
 - `encode_code128(data: str) -> str`: texto ASCII 32–126. Elige subconjuntos como el modo automático de Zebra: empieza en B, salvo que la cadena entera sea de dígitos y de longitud par, en cuyo caso empieza en C; dentro de la cadena, una corrida de 4 o más dígitos se codifica en C (si la corrida es impar, el primer dígito va en B y el resto en C) con cambio de subconjunto (`CODE C` = 99 desde B, `CODE B` = 100 desde C). Incluye START B (104) o START C (105), dígito de verificación módulo 103 y STOP (106, patrón de 13 módulos incluida la barra final). Cada símbolo son 11 módulos salvo STOP.
 
-`code128_modules(data)` pasa a devolver `len(encode_code128(data))`, exacto. `BarcodeSpec.width_dots` no cambia de firma. La regla `^BY2` si `módulos * 2 <= 380`, si no `^BY1`, se mantiene. El ZPL sigue emitiendo `^BCN,48,Y,N,N,A`; la impresora aplica la misma regla de subconjuntos, así que el ancho impreso coincide con el calculado.
+`code128_modules(data)` pasa a devolver `len(encode_code128(data))`, exacto. `BarcodeSpec.width_dots` no cambia de firma. La regla `^BY2` si `módulos * 2 <= 358`, si no `^BY1`, se mantiene (358 = 380 dots útiles menos 22, un símbolo Code 128 a `^BY2`, de margen por si la impresora empaqueta distinto). El ZPL sigue emitiendo `^BCN,48,Y,N,N,A`; la impresora aplica la misma regla de subconjuntos, así que el ancho impreso coincide con el calculado.
 
 ## 4. Layout como única fuente (`zpl.py`)
 

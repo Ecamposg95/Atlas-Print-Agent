@@ -5,7 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 MAX_CODE128_CHARS = 20
-MAX_BARCODE_DOTS = 380  # ancho útil de la etiqueta para el código
+# 380 dots útiles menos 22 (un símbolo Code 128 a ^BY2) por si la impresora empaqueta distinto
+MAX_BARCODE_DOTS = 358
 EAN13_MODULES = 95
 
 # Code 128: anchos de barras y espacios (alternados, empezando en barra) de cada valor 0..105.

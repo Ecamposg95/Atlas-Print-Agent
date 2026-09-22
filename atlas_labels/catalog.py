@@ -154,6 +154,12 @@ def select(
     department: str | None = None,
     gender: str | None = None,
 ) -> list[Product]:
+    """Filtra products por SKU, texto libre, departamento y género.
+
+    `gender` espera los valores de `Product.gender` ("Hombre" o "Mujer"), no las
+    etiquetas que muestra la interfaz (p. ej. "Hombre / sin especificar").
+    `None` o cadena vacía en cualquier filtro significa "todos".
+    """
     wanted = {s.strip().upper() for s in skus if s.strip()} if skus else None
     term = (search or "").strip().lower()
     dept = (department or "").strip().lower()

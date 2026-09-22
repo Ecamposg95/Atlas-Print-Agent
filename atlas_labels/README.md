@@ -32,6 +32,8 @@ python -m atlas_labels.gui
 
 Abre el catálogo, busca, selecciona varias filas (Ctrl o Shift), elige copias por existencia o fijas y pulsa "Imprimir seleccionados". La impresora elegida se recuerda.
 
+Para abrirla con doble clic sin terminal, genera el ejecutable con `installers\labels\build_exe.ps1` (ver `installers/labels/README.md`).
+
 ## Columnas que se reconocen
 
 | Campo | Encabezados aceptados (sin importar acentos, mayúsculas ni espacios) |

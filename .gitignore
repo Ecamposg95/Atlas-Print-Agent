@@ -6,6 +6,7 @@ venv/
 *.egg-info/
 dist/
 build/
+*.spec
 
 # Agente: artefactos de runtime (nunca se versionan)
 **/certs/

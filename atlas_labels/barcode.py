@@ -140,7 +140,7 @@ def detect(text: str | None) -> BarcodeSpec | None:
     if ean13_checksum_ok(cleaned):
         return BarcodeSpec("EAN13", cleaned, 2)
 
-    data = "".join(ch for ch in cleaned if 33 <= ord(ch) <= 126 and ch not in "^~")
+    data = "".join(ch for ch in cleaned if 33 <= ord(ch) <= 126 and ch not in "^~>")
     if not data:
         return None
 

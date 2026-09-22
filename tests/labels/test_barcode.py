@@ -79,6 +79,10 @@ def test_detect_quita_asteriscos_y_espacios_interiores():
     assert detect("*1A4 3KE*").data == "1A43KE"
 
 
+def test_detect_quita_mayor_que():
+    assert detect("AB>CD").data == "ABCD"
+
+
 from atlas_labels.barcode import (  # noqa: E402
     CODE128_PATTERNS,
     CODE128_STOP,

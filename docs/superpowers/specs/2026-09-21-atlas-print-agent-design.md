@@ -150,4 +150,6 @@ Los backends de cada producto dejan de generar el ZIP y redirigen a la release d
 
 ## 6. Fuera de alcance de la primera versión
 
-BLE (impresoras portátiles sin puerto serie), impresoras de etiquetas ZPL/TSPL, impresión de PDF, actualización automática, ícono de bandeja. Quedan como candidatos para versiones posteriores.
+BLE (impresoras portátiles sin puerto serie), **entender** formatos de etiquetas ZPL/TSPL (plantillas, validación, previsualización), impresión de PDF, actualización automática, ícono de bandeja. Quedan como candidatos para versiones posteriores.
+
+Aclaración añadida el 2026-09-22, porque la redacción anterior ("impresoras de etiquetas ZPL/TSPL") se leía como una prohibición que no es: **transportar ZPL ya funciona y está soportado hoy**. El agente escribe bytes crudos en la cola que se le diga, y una Zebra aparece en `/printers` como cualquier otra. Lo que queda fuera de alcance es que el agente *interprete* esos formatos. Ver [`../../etiquetas-desde-atlas-one.md`](../../etiquetas-desde-atlas-one.md).

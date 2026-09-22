@@ -81,3 +81,19 @@ python.exe -m atlas_labels.gui
 ```bash
 uv run --no-project --with openpyxl --with pytest python -m pytest tests/labels -q
 ```
+
+## Carga automática del catálogo
+
+Al abrirse, la app busca sola el catálogo más reciente en `~/Downloads`, `~/Descargas` y en la última carpeta
+desde la que se abrió uno (`last_catalog_dir` en `~/.atlas_labels.json`). Considera catálogo cualquier archivo
+`catalogo*.xlsx`, `.xlsm` o `.csv`.
+
+La fecha sale del **nombre** (`catalogo_2026-09-21.xlsx`) y no de la del archivo, porque copiar o mover un export
+actualiza su `mtime` y lo haría pasar por nuevo. Si el nombre no trae fecha, cae a la del archivo.
+
+Arriba, junto a "Abrir catálogo", queda visible de cuándo es: *"Catálogo del 21 de septiembre — hace 1 día"*, en
+ámbar a partir de 2 días y en rojo a partir de 7 (`AVISO_DESDE` y `VIEJO_DESDE` en `discovery.py`). Si el libro
+trae varias hojas, la carga automática usa la primera; para elegir otra, "Abrir catálogo". Los errores de la
+carga automática son silenciosos a propósito: ese archivo no lo eligió nadie.
+
+Hacia dónde va esto (traer el catálogo sin exportarlo a mano): [`../docs/etiquetas-desde-atlas-one.md`](../docs/etiquetas-desde-atlas-one.md).

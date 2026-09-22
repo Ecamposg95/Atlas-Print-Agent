@@ -116,7 +116,8 @@ El detalle completo — API, logs, manejo de errores del spooler, instalación p
 
 En la PC de almacén, doble clic en `dist\Atlas Labels.exe` (o el acceso directo **Atlas Labels** del escritorio). No necesita terminal ni Python. Adentro:
 
-1. **Abrir catálogo** — acepta `.xlsx`, `.xlsm` o `.csv`; si el libro trae varias hojas, pregunta cuál.
+0. **Ya viene cargado.** Al abrirse busca sola el catálogo más reciente en Descargas y muestra de cuándo es — *"Catálogo del 21 de septiembre — hace 1 día"*, en ámbar a los 2 días y en rojo a la semana. Si sale en color, exporta uno nuevo antes de imprimir precios.
+1. **Abrir catálogo** — solo si quieres otro archivo u otra hoja. Acepta `.xlsx`, `.xlsm` o `.csv`; si el libro trae varias hojas, pregunta cuál.
 2. Filtra por **Departamento**, **Género** o texto libre (SKU, código, marca, nombre).
 3. La columna **Etiquetas** arranca igual a `Stock` y se edita con doble clic. "Usar existencia" y "Poner N a seleccionados" cambian varias filas de golpe.
 4. Selecciona una fila para ver la etiqueta dibujada tal como saldrá (pestaña **Etiqueta**) y el ZPL crudo (pestaña **ZPL**).
@@ -157,6 +158,7 @@ Detalles, mapeo de columnas del catálogo y el uso desde WSL con el Python de Wi
 | `docs/superpowers/specs/` | Diseños aprobados: [agente unificado](docs/superpowers/specs/2026-09-21-atlas-print-agent-design.md), [etiquetas](docs/superpowers/specs/2026-09-21-etiquetas-zebra-design.md), [app v2](docs/superpowers/specs/2026-09-21-atlas-labels-gui-v2-design.md). |
 | `docs/reference/` | Notas de campo: CUPS y térmicas en Ubuntu, runbook de autoarranque, auditoría de impresión offline. |
 | `docs/integracion-agentes.md` | Contrato para los repos que consumen el agente. |
+| `docs/etiquetas-desde-atlas-one.md` | Los dos caminos de las etiquetas: Excel local y una futura interfaz en Atlas One, con lo que habría que tocar en cada repo. |
 | `AGENTS.md` | Convenciones e invariantes para quien desarrolla aquí dentro. |
 
 ---

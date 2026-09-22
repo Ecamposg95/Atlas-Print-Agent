@@ -104,6 +104,7 @@ One antes de dar el trabajo por cerrado.
 | [`README.md`](README.md) | Panorama y uso de las dos herramientas. |
 | [`docs/integracion-agentes.md`](docs/integracion-agentes.md) | Contrato para los repos que consumen el agente. |
 | [`docs/etiquetas-desde-atlas-one.md`](docs/etiquetas-desde-atlas-one.md) | Los dos caminos de las etiquetas (Excel local y UI en Atlas One), qué falta averiguar y qué tocar dónde. **Léelo antes de proponer mover las etiquetas a otro repo.** |
+| [`docs/peticiones-a-atlas-one.md`](docs/peticiones-a-atlas-one.md) | Lo que este proyecto necesita de Atlas One y Rmazh, consolidado. **Cuando descubras que algo depende de otro repo, se anota ahí — no se va a arreglarlo allá.** |
 | [`legacy/print_agent/README.md`](legacy/print_agent/README.md) | Operación real del agente v3: API, logs, errores del spooler. |
 | [`atlas_labels/README.md`](atlas_labels/README.md) | CLI, mapeo de columnas del catálogo, uso desde WSL. |
 | [`docs/superpowers/specs/`](docs/superpowers/specs/) | Diseños aprobados de las tres piezas. |

@@ -4,6 +4,9 @@ Contrato para quien trabaja en un producto que **consume** el agente de impresi�
 Atlas Booking y los que sigan. Si en cambio vas a editar el agente mismo, lo tuyo es
 [`../AGENTS.md`](../AGENTS.md).
 
+> **¿Buscas qué te toca cambiar a ti?** Este documento es el contrato de la API. La lista de cambios que este
+> proyecto *pide* a Atlas One y a Rmazh está en [`peticiones-a-atlas-one.md`](peticiones-a-atlas-one.md).
+
 ---
 
 ## 1. El modelo mental, que es donde todos se equivocan

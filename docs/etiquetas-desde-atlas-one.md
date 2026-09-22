@@ -164,6 +164,10 @@ que desplegar y vigilar, para 331 líneas de lógica pura sin estado.
 cambiar allá se documenta aquí y lo ejecuta alguien en ese repo. Esto aplica aunque el repo esté en la misma
 máquina.
 
+> Estas peticiones están también en [`peticiones-a-atlas-one.md`](peticiones-a-atlas-one.md) (peticiones 4 a 6),
+> redactadas para el agente que trabaje en Atlas One. Ese es el documento que se le pasa a alguien de allá; este
+> es el razonamiento de por qué. Si cambian aquí, hay que actualizarlas allá.
+
 | Repo | Qué habría que hacer | Cuándo |
 |---|---|---|
 | `atlas-one` (backend) | **Solo si la prueba del §4.1 devuelve 401:** aceptar las llaves de `/api/platform/api-keys` como credencial en `/api/products/export/labels.csv` (y, idealmente, en `/api/products/*`). Hoy el único esquema es el bearer de sesión, lo que obligaría a guardar la contraseña del dueño en una PC de almacén | Requisito del camino A |

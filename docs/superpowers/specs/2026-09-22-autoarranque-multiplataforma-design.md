@@ -349,6 +349,10 @@ Cuando existan las releases, `atlas-one` y `Atlas-Rmazh` deben cambiar lo siguie
 para que el autoarranque funcione: sin ello, la pantalla `/printer-settings` simplemente sigue entregando el
 agente viejo en modo manual, y conviven dos mecanismos.
 
+> Estas tres peticiones viven también, junto con las de etiquetas y en versión dirigida al agente que trabaje en
+> esos repos, en [`../../peticiones-a-atlas-one.md`](../../peticiones-a-atlas-one.md) (peticiones 1 a 3). Si
+> cambian aquí, hay que actualizarlas allá.
+
 | Repo | Archivo | Cambio | Riesgo si se olvida |
 |---|---|---|---|
 | `atlas-one` y `Atlas-Rmazh` | `app/routers/printer.py` | `GET /api/printer/download-agent?platform=windows\|linux\|mac` deja de armar el ZIP leyendo `tools/print_agent/` por ruta relativa, y pasa a **redirigir** al artefacto correspondiente de la release de este repo (`.deb`, `.pkg` según arquitectura, `.exe`) | La pantalla sigue entregando el modo manual; dos mecanismos conviviendo en campo |

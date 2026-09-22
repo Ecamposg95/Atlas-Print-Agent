@@ -36,7 +36,7 @@ Dos herramientas independientes que comparten un objetivo: que el personal de ti
 
 Cada producto (Atlas One, Atlas Rmazh, los que sigan) llevaba su propia copia del agente en `tools/print_agent/` y las copias ya habían divergido. Aquí se consolidan, para que un arreglo se haga una vez y sirva a todos.
 
-> **¿Eres un agente de IA?** Si trabajas **en este repo**, lee [`AGENTS.md`](AGENTS.md). Si trabajas en un repo que **consume** el agente (Atlas One, Rmazh, Booking), lee [`docs/integracion-agentes.md`](docs/integracion-agentes.md).
+> **¿Eres un agente de IA?** Si trabajas **en este repo**, lee [`AGENTS.md`](AGENTS.md). Si trabajas en un repo que **consume** el agente (Atlas One, Rmazh, Booking), lee [`docs/integracion-agentes.md`](docs/integracion-agentes.md) para el contrato, y [`docs/peticiones-a-atlas-one.md`](docs/peticiones-a-atlas-one.md) para lo que este proyecto necesita de ustedes.
 
 ---
 
@@ -159,6 +159,7 @@ Detalles, mapeo de columnas del catálogo y el uso desde WSL con el Python de Wi
 | `docs/reference/` | Notas de campo: CUPS y térmicas en Ubuntu, runbook de autoarranque, auditoría de impresión offline. |
 | `docs/integracion-agentes.md` | Contrato para los repos que consumen el agente. |
 | `docs/etiquetas-desde-atlas-one.md` | Los dos caminos de las etiquetas: Excel local y una futura interfaz en Atlas One, con lo que habría que tocar en cada repo. |
+| `docs/peticiones-a-atlas-one.md` | **Todo lo que este proyecto necesita de Atlas One y Rmazh, en un solo lugar.** Para el agente que trabaje en esos repos. |
 | `AGENTS.md` | Convenciones e invariantes para quien desarrolla aquí dentro. |
 
 ---

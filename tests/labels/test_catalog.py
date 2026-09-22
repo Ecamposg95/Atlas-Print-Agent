@@ -150,3 +150,33 @@ def test_select_por_texto_en_sku_codigo_marca_o_nombre():
 
 def test_select_sin_filtros_devuelve_todo():
     assert len(select(_products())) == 3
+
+
+def test_read_xlsx_mapea_departamento(make_xlsx):
+    headers = ATLAS_HEADERS[:4] + ["Departamento"] + ATLAS_HEADERS[4:]
+    path = make_xlsx({"Plantilla": [
+        headers,
+        ["A", "Pantalón", None, "Amiri", " Pantalones ", "2017000000013", 1800, 3, None, None],
+    ]})
+    assert read_catalog(path)[0].department == "Pantalones"
+
+
+def _catalog():
+    return [
+        Product(sku="AMI-PANT-MEZ", name="Pantalón", department="Pantalones"),
+        Product(sku="LP-PANT-MUJ", name="Pantalón", department="Pantalones"),
+        Product(sku="CH-PLAY-EP-CH", name="Playera", department="Playeras"),
+    ]
+
+
+def test_select_por_departamento_sin_distinguir_mayusculas():
+    assert [p.sku for p in select(_catalog(), department="pantalones ")] == ["AMI-PANT-MEZ", "LP-PANT-MUJ"]
+
+
+def test_select_por_genero():
+    assert [p.sku for p in select(_catalog(), gender="Mujer")] == ["LP-PANT-MUJ"]
+    assert [p.sku for p in select(_catalog(), gender="hombre")] == ["AMI-PANT-MEZ", "CH-PLAY-EP-CH"]
+
+
+def test_select_departamento_y_genero_vacios_no_filtran():
+    assert len(select(_catalog(), department="", gender="")) == 3

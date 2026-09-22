@@ -38,3 +38,19 @@ def test_price_display_usa_texto_si_no_hay_numero():
 
 def test_price_display_vacio():
     assert Product(sku="A", name="B").price_display == ""
+
+
+def test_gender_mujer_por_sufijo_del_sku():
+    assert Product(sku="LP-PANT-MUJ", name="x").gender == "Mujer"
+    assert Product(sku="BAL-PANT-MUJ-2", name="x").gender == "Mujer"
+    assert Product(sku="lp-pant-muj", name="x").gender == "Mujer"
+
+
+def test_gender_hombre_en_cualquier_otro_caso():
+    assert Product(sku="LP-PANT", name="x").gender == "Hombre"
+    assert Product(sku="AMI-PANT-MEZ", name="x").gender == "Hombre"
+    assert Product(sku="", name="x").gender == "Hombre"
+
+
+def test_department_por_defecto_vacio():
+    assert Product(sku="A", name="B").department == ""

@@ -5,7 +5,7 @@ from __future__ import annotations
 from .zpl import LABEL_HEIGHT, LABEL_WIDTH, Bars, Text
 
 TEXT_FONT_FACTOR = 0.8  # altura ZPL → píxeles de fuente Tk, aproximado
-INTERPRETATION_HEIGHT = 11
+INTERPRETATION_HEIGHT = 12
 
 
 def draw(canvas, elements: list[Text | Bars], scale: float = 2.0, offset: tuple[int, int] = (0, 0)) -> None:

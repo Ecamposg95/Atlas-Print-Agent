@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from decimal import Decimal
 
 from .barcode import BarcodeSpec, detect
@@ -36,27 +37,68 @@ def fit_text(value, height: int, max_width: int) -> str:
     return text.rstrip() + ".."
 
 
-def _barcode_lines(spec: BarcodeSpec) -> list[str]:
-    x = max(MARGIN, (LABEL_WIDTH - spec.width_dots) // 2)
-    lines = [f"^FO{x},76^BY{spec.module_width},2,{BARCODE_HEIGHT}"]
-    if spec.kind == "EAN13":
-        lines.append(f"^BEN,{BARCODE_HEIGHT},Y,N^FD{spec.data}^FS")
-    else:
-        lines.append(f"^BCN,{BARCODE_HEIGHT},Y,N,N,A^FD{spec.data}^FS")
-    return lines
+@dataclass(frozen=True)
+class Text:
+    x: int
+    y: int
+    height: int
+    text: str
+    width: int | None = None  # caja ^FB; solo se usa con align="R"
+    align: str = "L"  # "L" | "R"
 
 
-def build_label(product: Product, copies: int = 1, spec: BarcodeSpec | None = None) -> str:
+@dataclass(frozen=True)
+class Bars:
+    x: int
+    y: int
+    height: int
+    bits: str  # módulos '1'/'0'
+    module_width: int
+    interpretation: str  # línea legible bajo las barras
+    kind: str  # "EAN13" | "CODE128"
+    data: str
+
+
+def layout(product: Product, spec: BarcodeSpec | None = None) -> list[Text | Bars]:
+    """Elementos de la etiqueta con sus coordenadas en dots. Única fuente para ZPL y preview."""
     spec = spec if spec is not None else detect(product.barcode)
     if spec is None:
         raise ValueError(f"{product.sku or product.name}: sin código de barras")
 
+    elements: list[Text | Bars] = [
+        Text(MARGIN, 8, 22, fit_text(product.brand, 22, TEXT_WIDTH)),
+        Text(MARGIN, 34, 18, fit_text(product.name, 18, TEXT_WIDTH)),
+    ]
     variant = fit_text(
         " / ".join(x for x in (zpl_safe(product.size), zpl_safe(product.color)) if x),
         15,
         TEXT_WIDTH,
     )
+    if variant:
+        elements.append(Text(MARGIN, 56, 15, variant))
+    x = max(MARGIN, (LABEL_WIDTH - spec.width_dots) // 2)
+    elements.append(Bars(x, 76, BARCODE_HEIGHT, spec.bits, spec.module_width, spec.data, spec.kind, spec.data))
+    elements.append(Text(MARGIN, 168, 14, fit_text(product.sku, 14, SKU_WIDTH)))
+    price = fit_text(product.price_display, 22, PRICE_WIDTH)
+    if price:
+        elements.append(Text(LABEL_WIDTH - MARGIN - PRICE_WIDTH, 162, 22, price, PRICE_WIDTH, "R"))
+    return elements
 
+
+def _element_lines(el: Text | Bars) -> list[str]:
+    if isinstance(el, Bars):
+        lines = [f"^FO{el.x},{el.y}^BY{el.module_width},2,{el.height}"]
+        if el.kind == "EAN13":
+            lines.append(f"^BEN,{el.height},Y,N^FD{el.data}^FS")
+        else:
+            lines.append(f"^BCN,{el.height},Y,N,N,A^FD{el.data}^FS")
+        return lines
+    if el.width is not None and el.align == "R":
+        return [f"^FO{el.x},{el.y}^A0N,{el.height},{el.height}^FB{el.width},1,0,R^FD{el.text}^FS"]
+    return [f"^FO{el.x},{el.y}^A0N,{el.height},{el.height}^FD{el.text}^FS"]
+
+
+def build_label(product: Product, copies: int = 1, spec: BarcodeSpec | None = None) -> str:
     lines = [
         "^XA",
         f"^PW{LABEL_WIDTH}",
@@ -64,17 +106,9 @@ def build_label(product: Product, copies: int = 1, spec: BarcodeSpec | None = No
         "^LH0,0",
         "^CI28",
         f"^PQ{max(1, int(copies))}",
-        f"^FO{MARGIN},8^A0N,22,22^FD{fit_text(product.brand, 22, TEXT_WIDTH)}^FS",
-        f"^FO{MARGIN},34^A0N,18,18^FD{fit_text(product.name, 18, TEXT_WIDTH)}^FS",
     ]
-    if variant:
-        lines.append(f"^FO{MARGIN},56^A0N,15,15^FD{variant}^FS")
-    lines.extend(_barcode_lines(spec))
-    lines.append(f"^FO{MARGIN},168^A0N,14,14^FD{fit_text(product.sku, 14, SKU_WIDTH)}^FS")
-    price = fit_text(product.price_display, 22, PRICE_WIDTH)
-    if price:
-        x = LABEL_WIDTH - MARGIN - PRICE_WIDTH
-        lines.append(f"^FO{x},162^A0N,22,22^FB{PRICE_WIDTH},1,0,R^FD{price}^FS")
+    for el in layout(product, spec):
+        lines.extend(_element_lines(el))
     lines.append("^XZ")
     return "\n".join(lines)
 

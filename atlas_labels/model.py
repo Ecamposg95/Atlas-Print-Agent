@@ -17,12 +17,19 @@ class Product:
     stock: int = 0
     color: str = ""
     size: str = ""
+    department: str = ""
 
     @property
     def price_display(self) -> str:
         if self.price is not None:
             return f"${self.price:,.2f}"
         return self.price_text
+
+    @property
+    def gender(self) -> str:
+        """Derivado del SKU: el export de Atlas One marca las prendas de mujer con -MUJ."""
+        sku = self.sku.upper()
+        return "Mujer" if sku.endswith("-MUJ") or "-MUJ-" in sku else "Hombre"
 
 
 def parse_price(text: str) -> tuple[Decimal | None, str]:

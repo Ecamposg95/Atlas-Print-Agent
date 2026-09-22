@@ -30,7 +30,17 @@ python -m atlas_labels previsualizar catalogo.xlsx --sku CH-PLAY-EP-CH
 python -m atlas_labels.gui
 ```
 
-Abre el catálogo, busca, selecciona varias filas (Ctrl o Shift), elige copias por existencia o fijas y pulsa "Imprimir seleccionados". La impresora elegida se recuerda.
+"Abrir catálogo" acepta `.xlsx`, `.xlsm` o `.csv`; si el libro tiene más de una hoja, pregunta cuál usar.
+
+Filtros arriba de la tabla: **Departamento** (los valores que trae el catálogo) y **Género**, que se infiere del SKU: termina en `-MUJ` (o contiene `-MUJ-`) → "Mujer"; cualquier otro caso cuenta como "Hombre / sin especificar", porque el catálogo no trae un dato de género explícito. También hay un buscador de texto libre sobre SKU, código, marca y nombre.
+
+La tabla muestra `SKU, Código, Marca, Nombre, Departamento, Talla, Color, Precio, Stock` y una columna **Etiquetas**: cuántas copias se van a imprimir de esa fila. Arranca igual a `Stock` y se puede editar con doble clic sobre la celda (Enter o clic afuera guarda, Escape cancela). Los botones "Usar existencia" y "Poner N a seleccionados" cambian las copias de varias filas a la vez (sin selección, "Usar existencia" aplica a toda la tabla visible).
+
+Al seleccionar una fila, el panel de la derecha dibuja la etiqueta tal como saldrá de la Zebra (pestaña "Etiqueta") y muestra el ZPL crudo (pestaña "ZPL").
+
+"Imprimir seleccionados" arma el lote con las copias de la columna Etiquetas de las filas marcadas, muestra un resumen (incluyendo lo que se omite por falta de existencia o de código de barras) y pide confirmación antes de mandar el trabajo. La impresora elegida se recuerda entre sesiones.
+
+Para abrirla con doble clic sin terminal, genera el ejecutable con `installers\labels\build_exe.ps1` (ver `installers/labels/README.md`).
 
 ## Columnas que se reconocen
 
@@ -44,6 +54,7 @@ Abre el catálogo, busca, selecciona varias filas (Ctrl o Shift), elige copias p
 | Existencia | `Stock`, `CANTIDAD`, `Existencia` |
 | Color | `Color` |
 | Talla | `Talla` |
+| Departamento | `Departamento`, `Depto`, `Categoria` |
 
 Trece dígitos con checksum válido se imprimen como EAN-13; cualquier otro texto como Code 128 (se quitan asteriscos y espacios).
 

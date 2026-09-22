@@ -69,6 +69,14 @@ python -m atlas_labels.gui
 
 Detalles en [`atlas_labels/README.md`](atlas_labels/README.md).
 
+### Abrir la app en esta PC (Windows)
+
+Doble clic en `C:\Users\ecamp\Devs\Atlas-Print-Agent\dist\Atlas Labels.exe`. No necesita terminal ni Python;
+adentro se abre el catálogo que hayas descargado con el botón "Abrir catálogo".
+
+Si cambia el código de `atlas_labels/`, hay que regenerar el .exe: en PowerShell, desde la raíz del repo,
+`.\installers\labels\build_exe.ps1`.
+
 ## Siguientes pasos
 
 1. Aprobar sección por sección el diseño del spec.

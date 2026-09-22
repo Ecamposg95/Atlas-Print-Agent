@@ -130,3 +130,39 @@ def test_build_batch_concatena_bloques():
 def test_build_test_label_es_valido():
     zpl = build_test_label()
     assert "^XA" in zpl and "^BEN" in zpl and "ATLAS TECH" in zpl
+
+
+from atlas_labels.zpl import Bars, Text, layout  # noqa: E402
+
+
+def test_layout_elementos_en_orden():
+    els = layout(_p())
+    kinds = [type(e).__name__ for e in els]
+    assert kinds == ["Text", "Text", "Text", "Bars", "Text", "Text"]
+    brand, name, variant, bars, sku, price = els
+    assert (brand.x, brand.y, brand.height, brand.text) == (12, 8, 22, "Chrome Hearts")
+    assert (name.y, name.height) == (34, 18)
+    assert (variant.y, variant.text) == (56, "M / Negro")
+    assert (bars.x, bars.y, bars.height, bars.module_width, bars.kind) == (109, 76, 48, 2, "EAN13")
+    assert len(bars.bits) == 95 and bars.interpretation == "2017000000013"
+    assert (sku.y, sku.text) == (168, "CH-PLAY-EP-CH")
+    assert (price.x, price.y, price.width, price.align, price.text) == (246, 162, 150, "R", "$1,800.00")
+
+
+def test_layout_omite_variante_y_precio_vacios():
+    els = layout(_p(size="", color="", price=None, price_text=""))
+    assert [type(e).__name__ for e in els] == ["Text", "Text", "Bars", "Text"]
+
+
+def test_layout_sin_codigo_lanza_valueerror():
+    with pytest.raises(ValueError):
+        layout(_p(barcode=""))
+
+
+def test_build_label_es_la_traduccion_de_layout():
+    zpl = build_label(_p(), copies=2)
+    for el in layout(_p()):
+        if isinstance(el, Text):
+            assert f"^FD{el.text}^FS" in zpl
+        else:
+            assert f"^FO{el.x},{el.y}^BY{el.module_width},2,{el.height}" in zpl

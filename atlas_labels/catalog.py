@@ -25,6 +25,7 @@ ALIASES: dict[str, tuple[str, ...]] = {
     "stock": ("stock", "cantidad", "existencia"),
     "color": ("color",),
     "size": ("talla",),
+    "department": ("departamento", "depto", "categoria"),
 }
 REQUIRED = ("sku", "name")
 
@@ -78,7 +79,7 @@ def rows_to_products(headers: list, rows: Iterable) -> list[Product]:
         products.append(Product(
             sku=sku, name=name, brand=get("brand"), barcode=get("barcode"),
             price=price, price_text=price_text, stock=parse_stock(get("stock")),
-            color=get("color"), size=get("size"),
+            color=get("color"), size=get("size"), department=get("department"),
         ))
     return products
 
@@ -146,14 +147,32 @@ def read_catalog(path, sheet: str | None = None) -> list[Product]:
     raise CatalogError(f"Formato no soportado: {p.suffix}. Usa .xlsx o .csv")
 
 
-def select(products: list[Product], skus: list[str] | None = None, search: str | None = None) -> list[Product]:
+def select(
+    products: list[Product],
+    skus: list[str] | None = None,
+    search: str | None = None,
+    department: str | None = None,
+    gender: str | None = None,
+) -> list[Product]:
+    """Filtra products por SKU, texto libre, departamento y género.
+
+    `gender` espera los valores de `Product.gender` ("Hombre" o "Mujer"), no las
+    etiquetas que muestra la interfaz (p. ej. "Hombre / sin especificar").
+    `None` o cadena vacía en cualquier filtro significa "todos".
+    """
     wanted = {s.strip().upper() for s in skus if s.strip()} if skus else None
     term = (search or "").strip().lower()
+    dept = (department or "").strip().lower()
+    gen = (gender or "").strip().lower()
     out: list[Product] = []
     for p in products:
         if wanted is not None and p.sku.upper() not in wanted:
             continue
         if term and term not in " ".join((p.sku, p.barcode, p.brand, p.name)).lower():
+            continue
+        if dept and p.department.strip().lower() != dept:
+            continue
+        if gen and p.gender.lower() != gen:
             continue
         out.append(p)
     return out

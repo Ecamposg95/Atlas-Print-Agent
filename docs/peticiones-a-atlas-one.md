@@ -11,6 +11,10 @@ de este repo es contexto.
 **Nada de esta lista es urgente ni rompe nada hoy.** Si no se hace, todo sigue funcionando como hasta ahora; lo
 que no llega es la mejora. Cada petición dice qué pasa si se ignora.
 
+> **¿Vas a ponerte a ello ahora?** Usa [`task-pack-atlas-one-2026-09-22.md`](task-pack-atlas-one-2026-09-22.md):
+> es esta misma lista en versión ejecutable, ordenada por prioridad, con los comandos exactos, qué reportar de
+> vuelta y qué **no** hacer todavía. Este documento es el porqué; ese es el cómo.
+
 ---
 
 ## Tabla de estado

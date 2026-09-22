@@ -160,6 +160,7 @@ Detalles, mapeo de columnas del catálogo y el uso desde WSL con el Python de Wi
 | `docs/integracion-agentes.md` | Contrato para los repos que consumen el agente. |
 | `docs/etiquetas-desde-atlas-one.md` | Los dos caminos de las etiquetas: Excel local y una futura interfaz en Atlas One, con lo que habría que tocar en cada repo. |
 | `docs/peticiones-a-atlas-one.md` | **Todo lo que este proyecto necesita de Atlas One y Rmazh, en un solo lugar.** Para el agente que trabaje en esos repos. |
+| `docs/task-pack-atlas-one-2026-09-22.md` | Esas peticiones en versión ejecutable: cinco tareas priorizadas, comandos exactos y plantilla de respuesta. |
 | `AGENTS.md` | Convenciones e invariantes para quien desarrolla aquí dentro. |
 
 ---

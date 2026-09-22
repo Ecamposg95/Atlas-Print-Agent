@@ -29,10 +29,10 @@ class BatchPlan:
         return "\n".join(lines)
 
 
-def plan(products: list[Product], copies: int | None = None) -> BatchPlan:
+def plan_items(items: list[tuple[Product, int]]) -> BatchPlan:
+    """Valida copias ya decididas por producto: omite copias ≤ 0 y productos sin código."""
     result = BatchPlan()
-    for product in products:
-        n = copies if copies is not None else product.stock
+    for product, n in items:
         if n <= 0:
             result.skipped.append((product, "sin existencia"))
             continue
@@ -44,3 +44,7 @@ def plan(products: list[Product], copies: int | None = None) -> BatchPlan:
             result.warnings.append(f"{product.sku or product.name}: {spec.warning}")
         result.items.append((product, n))
     return result
+
+
+def plan(products: list[Product], copies: int | None = None) -> BatchPlan:
+    return plan_items([(p, copies if copies is not None else p.stock) for p in products])

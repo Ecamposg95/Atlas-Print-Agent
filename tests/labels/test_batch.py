@@ -35,3 +35,23 @@ def test_summary_en_espanol():
     assert "1 productos" in text
     assert "3 etiquetas" in text
     assert "B: sin existencia" in text
+
+
+from atlas_labels.batch import plan_items  # noqa: E402
+
+
+def test_plan_items_respeta_copias_por_producto():
+    b = plan_items([(_p("A", stock=9), 2), (_p("B", stock=0), 5)])
+    assert b.items == [(_p("A", stock=9), 2), (_p("B", stock=0), 5)]
+    assert b.total_labels == 7
+
+
+def test_plan_items_omite_cero_y_sin_codigo():
+    b = plan_items([(_p("A"), 0), (_p("B", barcode=""), 3), (_p("C"), 1)])
+    assert [p.sku for p, _ in b.items] == ["C"]
+    assert b.skipped == [(_p("A"), "sin existencia"), (_p("B", barcode=""), "sin código")]
+
+
+def test_plan_equivale_a_plan_items_con_stock():
+    products = [_p("A", stock=3), _p("B", stock=0)]
+    assert plan(products) == plan_items([(p, p.stock) for p in products])

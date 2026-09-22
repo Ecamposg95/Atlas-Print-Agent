@@ -19,7 +19,6 @@ COLUMN_WIDTHS = {
 }
 ALL = "Todos"
 GENDER_LABELS = {"Hombre / sin especificar": "Hombre", "Mujer": "Mujer"}
-PREVIEW_SCALE = 2
 PREVIEW_PAD = 10
 
 
@@ -27,7 +26,11 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Atlas Labels")
-        self.geometry("1320x780")
+        self.geometry("1400x800")
+        try:
+            self.state("zoomed")
+        except tk.TclError:
+            pass
         self.products = []
         self.visible = []
         self.copies: dict[str, int] = {}  # SKU → etiquetas a imprimir; sobrevive a los filtros
@@ -72,7 +75,7 @@ class App(tk.Tk):
         body.pack(fill="both", expand=True, padx=10)
 
         left = ttk.Frame(body)
-        body.add(left, weight=3)
+        body.add(left, weight=1)
         self.tree = ttk.Treeview(left, columns=COLUMNS, show="headings", selectmode="extended")
         for col in COLUMNS:
             self.tree.heading(col, text=col)
@@ -85,16 +88,11 @@ class App(tk.Tk):
         self.tree.bind("<Double-1>", self.edit_copies)
 
         right = ttk.Frame(body)
-        body.add(right, weight=2)
+        body.add(right, weight=1)
         self.tabs = ttk.Notebook(right)
         self.tabs.pack(fill="both", expand=True)
-        self.canvas = tk.Canvas(
-            self.tabs,
-            width=LABEL_WIDTH * PREVIEW_SCALE + 2 * PREVIEW_PAD,
-            height=LABEL_HEIGHT * PREVIEW_SCALE + 2 * PREVIEW_PAD,
-            background="#e6e6e6",
-            highlightthickness=0,
-        )
+        self.canvas = tk.Canvas(self.tabs, background="#e6e6e6", highlightthickness=0)
+        self.canvas.bind("<Configure>", lambda _e: self.update_preview())
         self.tabs.add(self.canvas, text="Etiqueta")
         self.zpl_text = tk.Text(self.tabs, width=60, height=20)
         self.tabs.add(self.zpl_text, text="ZPL")
@@ -110,6 +108,8 @@ class App(tk.Tk):
 
         self.status = tk.StringVar(value="Abre un catálogo .xlsx o .csv para empezar.")
         ttk.Label(self, textvariable=self.status, padding=(10, 0, 10, 6)).pack(fill="x")
+
+        self.after(50, self.update_preview)
 
     # --- catálogo y filtros -------------------------------------------------
 
@@ -254,26 +254,32 @@ class App(tk.Tk):
 
     # --- vista previa -------------------------------------------------------
 
+    def _preview_scale(self) -> float:
+        w = max(1, self.canvas.winfo_width() - 2 * PREVIEW_PAD)
+        h = max(1, self.canvas.winfo_height() - 2 * PREVIEW_PAD)
+        return max(0.25, min(w / LABEL_WIDTH, h / LABEL_HEIGHT))
+
     def update_preview(self):
         self.canvas.delete("all")
         self.zpl_text.delete("1.0", "end")
+        scale = self._preview_scale()
         sel = self.selected_products()
         if not sel:
-            self._preview_message("Selecciona un producto para ver su etiqueta.")
+            self._preview_message("Selecciona un producto para ver su etiqueta.", scale)
             return
         product = sel[0]
         try:
             elements = layout(product)
         except ValueError as exc:
-            self._preview_message(f"No imprimible: {exc}")
+            self._preview_message(f"No imprimible: {exc}", scale)
             return
-        draw(self.canvas, elements, PREVIEW_SCALE, (PREVIEW_PAD, PREVIEW_PAD))
+        draw(self.canvas, elements, scale, (PREVIEW_PAD, PREVIEW_PAD))
         self.zpl_text.insert("1.0", build_label(product, max(1, self.copies_for(product))))
 
-    def _preview_message(self, text: str):
+    def _preview_message(self, text: str, scale: float):
         self.canvas.create_text(
-            PREVIEW_PAD + LABEL_WIDTH * PREVIEW_SCALE / 2,
-            PREVIEW_PAD + LABEL_HEIGHT * PREVIEW_SCALE / 2,
+            PREVIEW_PAD + LABEL_WIDTH * scale / 2,
+            PREVIEW_PAD + LABEL_HEIGHT * scale / 2,
             text=text, fill="#777777", font=("Helvetica", 12),
         )
 

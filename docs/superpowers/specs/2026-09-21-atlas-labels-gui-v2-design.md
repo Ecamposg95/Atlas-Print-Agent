@@ -81,7 +81,7 @@ Barra superior: "Abrir catálogo", Impresora (desplegable editable), Departament
 
 Tabla: columnas `SKU, Código, Marca, Nombre, Departamento, Talla, Color, Precio, Stock, Etiquetas`. `Etiquetas` arranca igual a `Stock` al cargar el catálogo y se guarda en un `dict[str, int]` por SKU que sobrevive a los filtros. Doble clic sobre la celda `Etiquetas` abre un `ttk.Entry` superpuesto; Enter o perder el foco guarda (entero ≥ 0, si no se ignora), Escape cancela. Botones bajo la tabla: "Usar existencia" (repone `Stock` en las filas seleccionadas, o en todas si no hay selección) y "Poner N a seleccionados" con un spinbox.
 
-Vista previa: un `ttk.Notebook` con dos pestañas. "Etiqueta": canvas de 816 x 400 (escala 2) que dibuja `layout` del primer producto seleccionado con `render.draw`; sin selección o sin código muestra el mensaje en gris. "ZPL": el texto crudo de `build_label`, como hoy.
+Vista previa: un `ttk.Notebook` con dos pestañas. "Etiqueta": canvas que se ajusta al espacio disponible; la escala se calcula del tamaño real del canvas (mínimo 0.25) y se redibuja en `<Configure>`, dibuja `layout` del primer producto seleccionado con `render.draw`; sin selección o sin código muestra el mensaje en gris. "ZPL": el texto crudo de `build_label`, como hoy.
 
 "Imprimir seleccionados": arma `plan_items` con las copias de la columna `Etiquetas` de las filas seleccionadas, muestra el resumen con omitidos, pide confirmación y manda un solo trabajo. Guardar la impresora preferida sigue envuelto en `try/except OSError`.
 

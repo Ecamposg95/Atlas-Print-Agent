@@ -119,6 +119,19 @@ docs/
 
 ### 5.2 Bluetooth
 
+> **Hallazgo del 2026-09-22 — Bluetooth es un defecto en producción, no solo una función que falta.**
+> Verificado en `legacy/print_agent/core/main.py`: **no hay transporte Bluetooth en ninguno de los dos
+> productos**. Cero referencias a `serial`, `rfcomm` o `bluetooth`; la escritura siempre termina en
+> `win32print.OpenPrinter(nombre)` o `lp -d nombre`. Atlas One rechaza los nombres `BT:` en `_safe_queue_name`
+> (HTTP 400); Rmazh los acepta en el regex y muere después contra una cola inexistente. Según el docstring del
+> test importado de Rmazh, `PrinterSettings` guarda `BT:<nombre>`, así que **la interfaz ofrece elegir
+> impresoras Bluetooth que nunca van a imprimir un ticket**.
+>
+> Consecuencia para esta sección: el test `test_queue_name_accepts_legit_names[BT:Impresora 58]` **no** es
+> evidencia de que Bluetooth funcione. Ampliar el regex lo pondría verde y convertiría un error visible en uno
+> silencioso. El criterio de aceptación de Bluetooth es imprimir un ticket real en una térmica emparejada, no
+> que pase la validación de nombres. Origen: análisis del agente de Atlas One, verificado aquí contra el código.
+
 Bluetooth clásico SPP. La impresora se empareja desde el sistema y aparece como puerto serie. El backend `bluetooth.py` escribe los bytes con `pyserial` en `/dev/rfcomm*` (Ubuntu), `COM*` (Windows) o `/dev/tty.*` (macOS). El agente descubre puertos serie disponibles y los expone en `/printers` con prefijo `BT:` para que los frontends actuales los puedan elegir sin cambios. Reintentos con backoff y timeout de escritura, para que una impresora apagada devuelva error y no cuelgue la caja.
 
 ### 5.3 Seguridad

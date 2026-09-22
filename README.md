@@ -183,7 +183,11 @@ uv run --no-project --with fastapi --with uvicorn --with pydantic --with cryptog
 | `test_queue_name_accepts_legit_names[\\PC-CAJA\POS-80]` | Nombres UNC de impresora compartida en red. |
 | `test_sin_la_variable_el_dominio_propio_se_rechaza` | Que un dominio propio sin `ATLAS_AGENT_ORIGINS` sea rechazado. |
 
-**El agente unificado debe pasar los 30.** Ese es el criterio de aceptación de la migración.
+**El agente unificado debe pasar los 30, pero eso no basta.** Estos tests afirman que el nombre **pasa la validación**, no que la impresión funcione.
+
+> ⚠️ **Bluetooth no imprime hoy, en ninguno de los dos productos.** No hay una sola línea de transporte Bluetooth en el agente: cero referencias a `serial`, `rfcomm` o `bluetooth` en las 1391 de `main.py`. La escritura siempre es `win32print.OpenPrinter(nombre)` o `lp -d nombre`. En Atlas One un nombre `BT:` se rechaza con un 400; en Rmazh pasa la validación y muere contra una cola que no existe.
+>
+> Por eso **añadir `:` al regex haría verde ese test y empeoraría el producto**: cambiaría un error visible por un fallo silencioso. Bluetooth necesita el backend de transporte del [§5.2 del diseño](docs/superpowers/specs/2026-09-21-atlas-print-agent-design.md); el test es condición necesaria, no suficiente. Hallazgo confirmado el 2026-09-22.
 
 ---
 

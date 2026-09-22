@@ -23,6 +23,7 @@ que no llega es la mejora. Cada petición dice qué pasa si se ignora.
 | 4 | Llaves de API válidas como bearer | `atlas-one` | **Sin confirmar**: falta una prueba | Que la app de etiquetas traiga el catálogo sola |
 | 5 | Columnas de `labels.csv` | `atlas-one` | **Sin confirmar**: falta ver el CSV | Lo mismo que la #4 |
 | 6 | Pregunta sobre `assign-missing` | `atlas-one` | Pregunta, no cambio | — |
+| 7 | **Bluetooth: no ofrecerlo mientras no imprima** | `atlas-one`, `Atlas-Rmazh` | **Confirmado** — afecta a cajas reales hoy | — |
 
 ---
 
@@ -152,6 +153,38 @@ manual del dueño: tomar el mayor base de 12 dígitos usado, sumar 1, recalcular
 **La pregunta:** ¿`assign-missing` hace exactamente eso y respeta esa serie? Si sí, la instrucción que seguimos
 repitiendo está obsoleta y debemos dejar de repetirla. Si no —si asigna de otra serie o de otro modo— hay que
 saberlo, porque un código que no escanea en el POS no se descubre hasta que la tienda no puede cobrar.
+
+## Petición 7 — Bluetooth: no ofrecerlo hasta que imprima
+
+**Repos:** `atlas-one` y `Atlas-Rmazh` (frontend). **Estado: confirmado. Afecta a cajas reales hoy.**
+
+Gracias por el análisis del 2026-09-22 — lo verificamos aquí contra el código y **es correcto**, con un matiz
+que cambia dónde se busca el fallo:
+
+**No existe transporte Bluetooth en el agente.** Cero referencias a `serial`, `rfcomm` o `bluetooth` en las 1391
+líneas de `main.py`. La escritura siempre termina en `win32print.OpenPrinter(nombre)` o `lp -d nombre`.
+
+| Producto | Qué pasa al imprimir en una impresora `BT:` |
+|---|---|
+| Atlas One | `_safe_queue_name` la **rechaza**: HTTP 400 "Nombre de impresora inválido". Nunca llega al spooler |
+| Rmazh | El regex la acepta y se intenta abrir como cola normal, que no existe |
+
+Los dos terminan en "no imprime", pero el síntoma difiere —un 400 frente a un error de spooler—, y eso cambia
+dónde busca quien depura en sucursal.
+
+**Lo que pedimos:** mientras el agente no tenga transporte Bluetooth, que la pantalla de impresoras **no ofrezca
+elegir una Bluetooth**, o que avise claramente de que no imprimirá tickets. Hoy la cajera puede emparejarla,
+verla en la lista, seleccionarla, y descubrir que no sale papel — sin ninguna pista de por qué.
+
+**Lo que viene:** el §5.2 del
+[diseño del agente unificado](superpowers/specs/2026-09-21-atlas-print-agent-design.md) contempla Bluetooth
+clásico SPP escribiendo con `pyserial` en `/dev/rfcomm*`, `COM*` o `/dev/tty.*`, y las colas aparecerán en
+`/printers` con prefijo `BT:` — **se elegirán igual que cualquier otra, sin cambios en el frontend.** Cuando eso
+exista, revertir esta petición es quitar el aviso.
+
+**Una advertencia técnica, por si alguien intenta el atajo:** en `legacy/tests/` hay un test que afirma que
+`BT:Impresora 58` pasa la validación de nombres. **Hacerlo verde ampliando el regex no arregla nada**: cambia un
+error visible por un fallo silencioso de spooler. El test afirma validación, no impresión.
 
 ---
 

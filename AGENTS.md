@@ -57,8 +57,15 @@ python -m atlas_labels imprimir catalogo.xlsx --dry-run --impresora "ZDesigner G
    corresponder a lo que sale impreso — que es exactamente el bug que la v2 vino a matar.
 4. **Los 3 tests legados que fallan son el criterio de aceptación de la migración, no basura.** Marcan lo que
    Rmazh acepta y Atlas One todavía no: prefijo `BT:` para Bluetooth, nombres UNC (`\\PC-CAJA\POS-80`) y el
-   rechazo de un dominio propio sin `ATLAS_AGENT_ORIGINS`. El agente unificado debe pasar los 30.
-5. **Todo string visible al usuario va en español.** Es personal de tienda, no desarrolladores.
+   rechazo de un dominio propio sin `ATLAS_AGENT_ORIGINS`. El agente unificado debe pasar los 30 — **y aun así
+   eso no basta**: ver el punto siguiente.
+5. **No hagas verde el test de `BT:` añadiendo `:` al regex.** Ese test afirma que el nombre pasa la
+   *validación*, no que se imprima. **Hoy no existe transporte Bluetooth**: cero referencias a `serial`,
+   `rfcomm` o `bluetooth` en `main.py`, y la escritura siempre acaba en `win32print.OpenPrinter(nombre)` o
+   `lp -d nombre`. Ampliar el regex convertiría un 400 visible en un fallo silencioso de spooler — el producto
+   quedaría peor y el test, verde. Bluetooth necesita el backend del §5.2 del diseño del agente unificado.
+   Confirmado el 2026-09-22 a partir de un análisis del agente de Atlas One.
+6. **Todo string visible al usuario va en español.** Es personal de tienda, no desarrolladores.
 
 ## Convenciones
 

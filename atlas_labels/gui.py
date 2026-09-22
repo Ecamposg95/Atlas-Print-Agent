@@ -33,7 +33,7 @@ class App(tk.Tk):
             pass
         self.products = []
         self.visible = []
-        self.copies: dict[str, int] = {}  # SKU → etiquetas a imprimir; sobrevive a los filtros
+        self.copies: dict[int, int] = {}  # id(producto) → etiquetas a imprimir; sobrevive a los filtros
         self._editor: ttk.Entry | None = None
         self._build_ui()
 
@@ -141,7 +141,7 @@ class App(tk.Tk):
         except Exception as exc:  # cualquier otro fallo de lectura no debe tumbar la app
             messagebox.showerror("Error inesperado al leer el catálogo", f"{type(exc).__name__}: {exc}")
             return
-        self.copies = {p.sku: p.stock for p in self.products}
+        self.copies = {id(p): p.stock for p in self.products}
         departments = sorted({p.department.strip() for p in self.products if p.department.strip()})
         self.department_box["values"] = (ALL, *departments)
         self.department_var.set(ALL)
@@ -175,7 +175,7 @@ class App(tk.Tk):
         )
 
     def copies_for(self, p) -> int:
-        return self.copies.get(p.sku, p.stock)
+        return self.copies.get(id(p), p.stock)
 
     def selected_products(self):
         return [self.visible[int(i)] for i in self.tree.selection()]
@@ -184,20 +184,20 @@ class App(tk.Tk):
 
     def set_copies(self, products, value: int):
         for p in products:
-            self.copies[p.sku] = max(0, int(value))
-        skus = {p.sku for p in products}
+            self.copies[id(p)] = max(0, int(value))
+        ids = {id(p) for p in products}
         for idx, p in enumerate(self.visible):
-            if p.sku in skus:
+            if id(p) in ids:
                 self.tree.item(str(idx), values=self._row(p))
         self.update_preview()
 
     def use_stock(self):
         targets = self.selected_products() or self.visible
         for p in targets:
-            self.copies[p.sku] = p.stock
-        skus = {p.sku for p in targets}
+            self.copies[id(p)] = p.stock
+        ids = {id(p) for p in targets}
         for idx, p in enumerate(self.visible):
-            if p.sku in skus:
+            if id(p) in ids:
                 self.tree.item(str(idx), values=self._row(p))
         self.update_preview()
 

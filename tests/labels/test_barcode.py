@@ -86,6 +86,7 @@ def test_detect_quita_mayor_que():
 from atlas_labels.barcode import (  # noqa: E402
     CODE128_PATTERNS,
     CODE128_STOP,
+    CODE_B,
     CODE_C,
     START_B,
     START_C,
@@ -130,6 +131,12 @@ def test_encode_code128_corrida_corta_se_queda_en_b():
     bits = encode_code128("AB12CD")
     assert len(bits) == 8 * 11 + 13
     assert _bits(CODE_C) not in bits[: 3 * 11]
+
+
+def test_encode_code128_vuelve_a_b_tras_corrida_en_c():
+    bits = encode_code128("1234AB")
+    assert bits.startswith(_bits(START_C) + _bits(12) + _bits(34) + _bits(CODE_B) + _bits(33) + _bits(34))
+    assert len(bits) == 7 * 11 + 13
 
 
 def test_encode_code128_rechaza_fuera_de_ascii():

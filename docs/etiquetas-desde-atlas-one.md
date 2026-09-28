@@ -136,6 +136,12 @@ POS y darle a imprimir. Cero exportaciones, cero archivos, y sirve desde cualqui
 Zebra aparece en `/printers` como cualquier otra cola. Es decir, **Atlas One ya podría imprimir etiquetas hoy
 por el agente, sin un solo cambio en el agente**.
 
+**Confirmado en campo el 2026-09-28.** Con el agente 3.1.0 instalado en la PC del dueño (Windows, Zebra
+`ZDesigner GX420t (EPL)` por USB), un `POST /print` con ZPL crudo sacó una etiqueta, y el dueño imprimió
+etiquetas **desde la UI de Atlas One**, que es un módulo todavía no terminado. El transporte del camino B está
+probado; lo que queda abierto es el §3: **revisar cómo genera el ZPL ese módulo**. Si reimplementa EAN-13 o
+Code 128 en Atlas One, es justo la duplicación que este documento pide evitar, y hay que llevarlo a B1.
+
 > Advertencia sobre el spec: el §6 de
 > [`superpowers/specs/2026-09-21-atlas-print-agent-design.md`](superpowers/specs/2026-09-21-atlas-print-agent-design.md)
 > dice que las "impresoras de etiquetas ZPL/TSPL" están fuera de alcance. Eso se refiere a que el agente
@@ -192,4 +198,6 @@ máquina.
 | Hecho | Averiguado qué expone la API de Atlas One (§4): `labels.csv` ya existe, y el camino A se acorta a una descarga autenticada |
 | Decidido | Los dos caminos conviven; `zpl`/`barcode`/`render` se quedan aquí como única fuente de verdad |
 | Bloqueado | El camino A, por dos cosas: si una llave de API sirve como bearer (§4.1) y qué columnas trae el CSV (§4.2). **Ambas se contestan con un solo `curl`** |
+| Hecho (2026-09-28) | Camino B probado de punta a punta: la UI de Atlas One imprime etiquetas en la Zebra a través del agente 3.1.0 |
+| Por revisar | Cómo genera el ZPL el módulo de Atlas One (§3: que no duplique los codificadores) |
 | Siguiente paso | Correr el `curl` del §4.1 con una llave de API y, con el resultado, diseñar el camino A con la skill de brainstorming |

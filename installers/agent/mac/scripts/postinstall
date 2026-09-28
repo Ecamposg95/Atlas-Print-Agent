@@ -1,0 +1,125 @@
+#!/bin/bash
+# Corre como root. Todo lo que es "de la cajera" (LaunchAgent, estado, log,
+# alias) va en SU home, no en el de root: si no, el agente no arranca nunca.
+set -u
+LABEL=com.atlasone.print-agent
+APP="/Applications/Atlas Print Agent.app"
+PLANTILLA="/Library/Application Support/AtlasPrintAgent/com.atlasone.print-agent.plist"
+VERSION_ESPERADA="__VERSION__"   # build_pkg.sh la sustituye
+LEGADO=/tmp/atlas-print-agent-legado.txt   # lo escribe preinstall
+[ -f "$LEGADO" ] || : > "$LEGADO"
+
+falla() {
+    echo "✗ $*"
+    echo "  Revisa: /var/log/install.log y ~/Library/Logs/AtlasPrintAgent/"
+    exit 1
+}
+
+USUARIO="$(stat -f %Su /dev/console)"
+if [ -z "$USUARIO" ] || [ "$USUARIO" = root ] || [ "$USUARIO" = loginwindow ]; then
+    falla "No hay una cajera con sesión abierta. Inicia sesión con su usuario y vuelve a instalar."
+fi
+UIDC="$(id -u "$USUARIO")"
+GRUPO="$(id -gn "$USUARIO")"
+HOGAR="$(dscl . -read "/Users/$USUARIO" NFSHomeDirectory | awk '{print $2}')"
+ESTADO="$HOGAR/Library/Application Support/AtlasPrintAgent"
+LOGS="$HOGAR/Library/Logs/AtlasPrintAgent"
+PLIST="$HOGAR/Library/LaunchAgents/$LABEL.plist"
+
+mkdir -p "$ESTADO/certs" "$LOGS" "$HOGAR/Library/LaunchAgents"
+
+# ── Certificado: se conserva el que el navegador ya aceptó ────────────────────
+# El instalador legado de servicio usaba este mismo directorio, así que en una
+# Mac ya convertida el certificado ya está donde debe.
+if [ -f "$ESTADO/certs/cert.pem" ] && [ -f "$ESTADO/certs/key.pem" ]; then
+    echo "✓ Certificado existente conservado."
+else
+    PREVIO=""
+    # Primero la carpeta que la caja usaba de verdad (anotada por preinstall).
+    while IFS= read -r d; do
+        if [ -n "$d" ] && [ -f "$d/core/certs/cert.pem" ] && [ -f "$d/core/certs/key.pem" ]; then
+            PREVIO="$d/core/certs"; break
+        fi
+    done < "$LEGADO"
+    [ -z "$PREVIO" ] && for d in "$ESTADO" "$HOGAR/Downloads/print_agent/core/certs" "$HOGAR/Descargas/print_agent/core/certs"; do
+        if [ -f "$d/cert.pem" ] && [ -f "$d/key.pem" ]; then PREVIO="$d"; break; fi
+    done
+    if [ -z "$PREVIO" ]; then
+        # macOS puede negarle al instalador leer Descargas o Escritorio (privacidad).
+        # Si eso pasa, esto no encuentra nada y el runbook dice cómo copiarlo antes.
+        c="$(find "$HOGAR" -maxdepth 8 -type f -name cert.pem -path '*/core/certs/*' -print0 2>/dev/null \
+              | xargs -0 stat -f '%m %N' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)"
+        if [ -n "$c" ] && [ -f "$(dirname "$c")/key.pem" ]; then PREVIO="$(dirname "$c")"; fi
+    fi
+    if [ -n "$PREVIO" ]; then
+        cp "$PREVIO/cert.pem" "$PREVIO/key.pem" "$ESTADO/certs/"
+        echo "✓ Certificado conservado desde $PREVIO."
+    else
+        echo "! No había certificado previo: el agente generará uno nuevo."
+        echo "  Habrá que aceptarlo una vez en https://127.0.0.1:9100/health"
+    fi
+fi
+[ -f "$ESTADO/certs/key.pem" ] && chmod 600 "$ESTADO/certs/key.pem"
+
+if [ ! -f "$ESTADO/agent.conf" ]; then
+    cat > "$ESTADO/agent.conf" <<'EOF'
+# Configuración del agente de impresión Atlas. Una línea CLAVE=valor.
+# Después de editarlo: cierra sesión y vuelve a entrar.
+#
+# Dominios extra del punto de venta, separados por coma. localhost,
+# *.up.railway.app y (*.)atlasone.com.mx ya se aceptan sin escribir nada.
+# ATLAS_AGENT_ORIGINS=https://pos.micliente.com
+EOF
+fi
+
+# ── El lanzador viejo pasa a abrir el agente nuevo ────────────────────────────
+# Un lanzador dentro de un repositorio git es una copia de desarrollo, no la de la
+# caja: no se toca (reescribirlo ensuciaría el repo).
+en_repo_git() {
+    local p="$1"
+    while [ -n "$p" ] && [ "$p" != / ] && [ "$p" != . ]; do
+        [ -e "$p/.git" ] && return 0
+        p="$(dirname "$p")"
+    done
+    return 1
+}
+while IFS= read -r d; do
+    f="$d/impresora_mac.sh"
+    [ -n "$d" ] && [ -f "$f" ] || continue
+    en_repo_git "$d" && continue
+    grep -q 'atlas-print-agent instalado' "$f" && continue
+    cp -p "$f" "$f.retirado" || continue
+    cat > "$f" <<'EOF'
+#!/bin/bash
+# Esta Mac ya usa el atlas-print-agent instalado: arranca solo al iniciar sesión.
+# Este archivo solo lo abre (dirá "ya está activo"). El original quedó como .retirado.
+open -a "Atlas Print Agent"
+EOF
+    chmod 755 "$f"; chown "$USUARIO:$GRUPO" "$f" "$f.retirado" 2>/dev/null
+    echo "✓ Lanzador viejo convertido en atajo al agente nuevo: $f"
+done < "$LEGADO"
+rm -f "$LEGADO"
+
+# ── LaunchAgent ───────────────────────────────────────────────────────────────
+sed "s|__HOME__|$HOGAR|g" "$PLANTILLA" > "$PLIST" || falla "No se pudo escribir $PLIST"
+chown -R "$USUARIO:$GRUPO" "$ESTADO" "$LOGS"
+chown "$USUARIO:$GRUPO" "$PLIST" "$HOGAR/Library/LaunchAgents"
+chmod 644 "$PLIST"
+
+launchctl asuser "$UIDC" launchctl bootout "gui/$UIDC/$LABEL" 2>/dev/null
+SALIDA="$(launchctl asuser "$UIDC" launchctl bootstrap "gui/$UIDC" "$PLIST" 2>&1)" \
+    || falla "launchctl bootstrap falló: $SALIDA"
+
+# ── Alias en el Escritorio (el equivalente al acceso directo de Windows) ──────
+ln -sfn "$APP" "$HOGAR/Desktop/Atlas Print Agent" 2>/dev/null \
+    && chown -h "$USUARIO:$GRUPO" "$HOGAR/Desktop/Atlas Print Agent" \
+    || echo "! No se pudo crear el alias en el Escritorio; el agente está en Aplicaciones."
+
+# ── Verificación real ─────────────────────────────────────────────────────────
+for _ in $(seq 1 30); do
+    sleep 1
+    H="$(curl -sk --noproxy '*' --max-time 2 https://127.0.0.1:9100/health 2>/dev/null)"
+    case "$H" in *"\"version\":\"$VERSION_ESPERADA\""*) echo "✓ Agente respondiendo: $H"; exit 0 ;; esac
+done
+echo "  Quién tiene el puerto 9100:"; lsof -nP -iTCP:9100 -sTCP:LISTEN 2>/dev/null
+falla "El agente $VERSION_ESPERADA quedó instalado pero NO respondió en https://127.0.0.1:9100/health"

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Agente de Impresión Atlas
+Comment=Puente local de impresión para Atlas POS
+Exec=/usr/bin/atlas-print-agent
+Icon=printer
+Terminal=false
+Categories=Office;Printing;
+StartupNotify=false

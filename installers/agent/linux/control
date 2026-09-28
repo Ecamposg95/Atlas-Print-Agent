@@ -1,0 +1,11 @@
+Package: atlas-print-agent
+Version: __VERSION__
+Section: misc
+Priority: optional
+Architecture: amd64
+Depends: cups, cups-client, cups-bsd, curl
+Recommends: zenity
+Maintainer: Atlas Technologies
+Description: Agente local de impresión de Atlas POS
+ Puente HTTPS en https://127.0.0.1:9100 entre el navegador de la caja y la
+ impresora de tickets. Arranca solo al prender la computadora.

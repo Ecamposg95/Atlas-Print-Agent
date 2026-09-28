@@ -1,0 +1,25 @@
+[Unit]
+Description=Agente de impresión Atlas (Atlas Print Agent)
+After=network-online.target cups.service
+Wants=network-online.target cups.service
+
+[Service]
+# User= y Group= los escribe postinst en atlas-print-agent.service.d/usuario.conf:
+# el agente corre como la cajera para ver sus impresoras, no como root.
+ExecStart=/usr/lib/atlas-print-agent/atlas-print-agent --servicio
+# systemd crea /var/lib/atlas-print-agent con el dueño correcto y lo exporta en
+# STATE_DIRECTORY. Ahí viven el certificado y agent.conf: reinstalar no los toca.
+StateDirectory=atlas-print-agent
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=atlas-print-agent
+# El agente llama lp, lpstat, lpadmin, lpinfo y cupsenable.
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+# Hardening razonable; no lockdown completo porque necesita los sockets de CUPS.
+NoNewPrivileges=true
+ProtectSystem=true
+
+[Install]
+WantedBy=multi-user.target

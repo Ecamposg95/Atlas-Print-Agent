@@ -1,0 +1,100 @@
+name: release-agente
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+  # En un PR construye y prueba los cuatro paquetes sin publicar nada: así se
+  # consiguen los instaladores de prueba antes de que el workflow exista en main
+  # (workflow_dispatch solo corre workflows que ya están en la rama por omisión).
+  pull_request:
+    paths:
+      - "legacy/print_agent/core/**"
+      - "installers/agent/**"
+      - "tests/agent/**"
+      - ".github/workflows/release.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: El tag coincide con VERSION de main.py
+        if: startsWith(github.ref, 'refs/tags/')
+        run: python installers/agent/version_agente.py --verificar-tag "$GITHUB_REF_NAME"
+      - run: pip install -r installers/agent/requirements-build.txt pytest
+      - run: python -m pytest tests/agent -q
+
+  construir:
+    needs: pruebas
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-22.04,   sistema: linux }    # glibc 2.35: corre en Ubuntu 22.04 y más nuevos
+          - { os: macos-15,       sistema: mac }      # Apple Silicon
+          - { os: macos-15-intel, sistema: mac }      # Intel
+          - { os: windows-latest, sistema: windows }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r installers/agent/requirements-build.txt
+      - run: python installers/agent/construir.py
+      - name: Prueba de humo del binario
+        run: python installers/agent/humo.py
+
+      - name: Paquete .deb
+        if: matrix.sistema == 'linux'
+        run: bash installers/agent/linux/build_deb.sh
+
+      - name: Paquete .pkg
+        if: matrix.sistema == 'mac'
+        run: bash installers/agent/mac/build_pkg.sh
+
+      - name: Instalador .exe
+        if: matrix.sistema == 'windows'
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress }
+          $env:ATLAS_VERSION = python installers/agent/version_agente.py
+          & $iscc installers\agent\windows\atlas-print-agent.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC falló" }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: paquete-${{ matrix.os }}
+          if-no-files-found: error
+          path: |
+            dist/*.deb
+            dist/*.pkg
+            dist/*.exe
+
+  publicar:
+    needs: construir
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: paquetes
+          merge-multiple: true
+      - name: Crear la release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ls -l paquetes
+          gh release create "$GITHUB_REF_NAME" paquetes/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Agente de impresión $GITHUB_REF_NAME" \
+            --notes-file installers/agent/notas-release.md

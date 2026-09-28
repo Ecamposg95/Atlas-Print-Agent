@@ -1,0 +1,197 @@
+#!/bin/bash
+# postinst del .deb: deja el agente corriendo como la cajera y registrado al
+# arranque. No declara éxito sin que /health responda.
+#
+# Usuario de la caja: ATLAS_AGENT_USER si se pasa
+#   (sudo ATLAS_AGENT_USER=caja apt install ./atlas-print-agent_*.deb),
+# si no quien corrió sudo, si no el dueño de la sesión abierta, si no el primer
+# usuario humano.
+set -u
+SERVICIO=atlas-print-agent
+ESTADO=/var/lib/atlas-print-agent
+DROPIN=/etc/systemd/system/$SERVICIO.service.d
+VERSION_ESPERADA="__VERSION__"   # build_deb.sh la sustituye
+
+[ "${1:-}" = "configure" ] || exit 0
+
+ok()   { echo "✓ $*"; }
+aviso(){ echo "! $*"; }
+falla(){
+    echo
+    echo "════════════════════════════════════════════════════════════"
+    echo "  ✗ $*"
+    echo "════════════════════════════════════════════════════════════"
+    echo "  Revisa:  journalctl -u $SERVICIO -n 50 --no-pager"
+    echo "  Tras corregir:  sudo dpkg --configure -a"
+    exit 1
+}
+
+usuario_de_la_caja() {
+    if [ -n "${ATLAS_AGENT_USER:-}" ]; then echo "$ATLAS_AGENT_USER"; return; fi
+    if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != root ]; then echo "$SUDO_USER"; return; fi
+    local u
+    u="$(loginctl list-sessions --no-legend 2>/dev/null | awk '$3 != "root" && $3 != "" {print $3; exit}')"
+    if [ -n "$u" ]; then echo "$u"; return; fi
+    getent passwd | awk -F: '$3 >= 1000 && $3 < 60000 {print $1; exit}'
+}
+
+[ -d /run/systemd/system ] || falla "Este sistema no corre systemd: no hay autoarranque que registrar."
+
+USUARIO="$(usuario_de_la_caja)"
+USUARIO="${USUARIO:-root}"
+id "$USUARIO" >/dev/null 2>&1 || falla "El usuario '$USUARIO' no existe. Usa: sudo ATLAS_AGENT_USER=<usuario> apt install ./<paquete>.deb"
+GRUPO="$(id -gn "$USUARIO")"
+HOGAR="$(getent passwd "$USUARIO" | cut -d: -f6)"
+ok "El agente correrá como '$USUARIO'."
+
+# ── Grupo lpadmin, para dar de alta colas desde /printers/install ─────────────
+if [ "$USUARIO" != root ] && getent group lpadmin >/dev/null && ! id -nG "$USUARIO" | grep -qw lpadmin; then
+    usermod -aG lpadmin "$USUARIO" && ok "'$USUARIO' agregado al grupo lpadmin."
+fi
+
+# ── Apagar el modo manual y las instalaciones viejas ──────────────────────────
+# Primero el envoltorio `while true` de impresora_linux.sh, luego el agente: si
+# no, el envoltorio lo resucita y le pelea el 9100 al servicio.
+matar() {
+    local pids
+    pids="$(pgrep -f "$1" 2>/dev/null | tr '\n' ' ')"
+    [ -z "${pids// /}" ] && return 0
+    echo "  Deteniendo $2 (PID: $pids)"
+    # shellcheck disable=SC2086
+    kill $pids 2>/dev/null; sleep 2
+    # shellcheck disable=SC2086
+    kill -9 $pids 2>/dev/null
+    return 0
+}
+UNIDAD_VIEJA=/etc/systemd/system/$SERVICIO.service
+if [ -f "$UNIDAD_VIEJA" ] && grep -q 'venv/bin/python3' "$UNIDAD_VIEJA"; then
+    # disable antes de mover: si no, queda el enlace de multi-user.target.wants
+    # apuntando al archivo movido y el enable de abajo puede fallar.
+    systemctl disable --now "$SERVICIO" >/dev/null 2>&1
+    mv "$UNIDAD_VIEJA" "$UNIDAD_VIEJA.legado-$(date +%Y%m%d%H%M%S)"
+    ok "Servicio legado (con venv) retirado; su unidad quedó respaldada junto a ella."
+fi
+UNIDAD_USUARIO="$HOGAR/.config/systemd/user/$SERVICIO.service"
+if [ -f "$UNIDAD_USUARIO" ]; then
+    runuser -u "$USUARIO" -- env XDG_RUNTIME_DIR="/run/user/$(id -u "$USUARIO")" \
+        systemctl --user disable --now "$SERVICIO" >/dev/null 2>&1
+    mv "$UNIDAD_USUARIO" "$UNIDAD_USUARIO.legado-$(date +%Y%m%d%H%M%S)"
+    ok "Servicio de usuario legado retirado."
+fi
+# Carpetas del modo manual: las de los procesos vivos (antes de matarlos) y las
+# que haya en el home. De ahí sale el certificado a conservar y el lanzador a retirar.
+LEGADO="$(
+    { pgrep -af '(bash|sh|zsh) .*impresora_linux\.sh$' | sed -n 's|.* \(/.*\)/impresora_linux\.sh$|\1|p'
+      pgrep -af 'python3? .*core/main\.py$' | sed -n 's|.* \(/.*\)/core/main\.py$|\1|p'
+      [ -d "$HOGAR" ] && find "$HOGAR" -maxdepth 8 -type f -name impresora_linux.sh -printf '%h\n' 2>/dev/null
+    } 2>/dev/null | sort -u
+)"
+matar '(bash|sh|zsh) .*impresora_linux\.sh$' "la ventana del modo manual"
+matar 'python3? .*core/main\.py$' "el agente manual"
+
+# ── Certificado: se conserva el que el navegador ya aceptó ────────────────────
+mkdir -p "$ESTADO/certs"
+if [ -f "$ESTADO/certs/cert.pem" ] && [ -f "$ESTADO/certs/key.pem" ]; then
+    ok "Certificado existente conservado (reinstalación o actualización)."
+else
+    PREVIO=""
+    # Primero el de la carpeta que la caja usaba de verdad (el más reciente).
+    c="$(printf '%s\n' "$LEGADO" | while IFS= read -r d; do
+            [ -n "$d" ] && [ -f "$d/core/certs/cert.pem" ] && [ -f "$d/core/certs/key.pem" ] \
+                && stat -c '%Y %n' "$d/core/certs"
+         done 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)"
+    [ -n "$c" ] && PREVIO="$c"
+    [ -z "$PREVIO" ] && for d in /opt/atlas-print-agent/core/certs "$HOGAR/.local/share/atlas-print-agent/core/certs"; do
+        if [ -f "$d/cert.pem" ] && [ -f "$d/key.pem" ]; then PREVIO="$d"; break; fi
+    done
+    if [ -z "$PREVIO" ] && [ -d "$HOGAR" ]; then
+        # El caso de campo: el ZIP descomprimido en Descargas y usado por meses.
+        c="$(find "$HOGAR" -maxdepth 8 -type f -name cert.pem -path '*/core/certs/*' \
+              -printf '%T@ %h\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)"
+        if [ -n "$c" ] && [ -f "$c/key.pem" ]; then PREVIO="$c"; fi
+    fi
+    if [ -n "$PREVIO" ]; then
+        cp "$PREVIO/cert.pem" "$PREVIO/key.pem" "$ESTADO/certs/"
+        ok "Certificado conservado desde $PREVIO: el navegador no pedirá aceptarlo de nuevo."
+    else
+        aviso "No había certificado previo: el agente generará uno nuevo."
+        aviso "En esta caja habrá que aceptarlo una vez en https://127.0.0.1:9100/health"
+    fi
+fi
+[ -f "$ESTADO/certs/key.pem" ] && chmod 600 "$ESTADO/certs/key.pem"
+
+# ── El lanzador viejo pasa a abrir el agente nuevo ────────────────────────────
+# La cajera lo seguirá usando por costumbre. Reescrito, muestra "ya está activo"
+# en vez de levantar un segundo agente que le pelee el 9100 al servicio.
+# Un lanzador dentro de un repositorio git es una copia de desarrollo, no la de la
+# caja: no se toca (reescribirlo ensuciaría el repo).
+en_repo_git() {
+    local p="$1"
+    while [ -n "$p" ] && [ "$p" != / ] && [ "$p" != . ]; do
+        [ -e "$p/.git" ] && return 0
+        p="$(dirname "$p")"
+    done
+    return 1
+}
+IFS=$'\n'
+for d in $LEGADO; do
+    f="$d/impresora_linux.sh"
+    [ -f "$f" ] || continue
+    en_repo_git "$d" && continue
+    grep -q 'atlas-print-agent instalado' "$f" && continue
+    cp -p "$f" "$f.retirado"
+    cat > "$f" <<'EOF'
+#!/bin/bash
+# Esta caja ya usa el atlas-print-agent instalado: arranca solo al prender la PC.
+# Este archivo solo lo abre (dirá "ya está activo"). El original quedó como .retirado.
+exec /usr/bin/atlas-print-agent
+EOF
+    chmod 755 "$f"; chown "$USUARIO:$GRUPO" "$f" "$f.retirado" 2>/dev/null
+    ok "Lanzador viejo convertido en atajo al agente nuevo: $f"
+done
+unset IFS
+
+# ── agent.conf de ejemplo, solo si no existe ──────────────────────────────────
+if [ ! -f "$ESTADO/agent.conf" ]; then
+    cat > "$ESTADO/agent.conf" <<'EOF'
+# Configuración del agente de impresión Atlas. Una línea CLAVE=valor.
+# Las variables de entorno ganan sobre este archivo. Después de editarlo:
+#   sudo systemctl restart atlas-print-agent
+#
+# Dominios extra del punto de venta, separados por coma. localhost,
+# *.up.railway.app y (*.)atlasone.com.mx ya se aceptan sin escribir nada.
+# ATLAS_AGENT_ORIGINS=https://pos.micliente.com
+#
+# ATLAS_AGENT_PORT=9100
+EOF
+fi
+chown -R "$USUARIO:$GRUPO" "$ESTADO"
+
+# ── Servicio ──────────────────────────────────────────────────────────────────
+mkdir -p "$DROPIN"
+printf '[Service]\nUser=%s\nGroup=%s\n' "$USUARIO" "$GRUPO" > "$DROPIN/usuario.conf"
+systemctl daemon-reload
+systemctl enable "$SERVICIO" >/dev/null 2>&1 || falla "No se pudo habilitar el servicio al arranque."
+systemctl restart "$SERVICIO" || falla "El servicio no arrancó."
+
+# ── Verificación real ─────────────────────────────────────────────────────────
+PUERTO="$(sed -n 's/^[[:space:]]*ATLAS_AGENT_PORT[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p' "$ESTADO/agent.conf" | tail -1)"
+PUERTO="${PUERTO:-9100}"
+HEALTH=""
+for _ in $(seq 1 30); do
+    sleep 1
+    HEALTH="$(curl -sk --noproxy '*' --max-time 2 "https://127.0.0.1:$PUERTO/health" 2>/dev/null)"
+    case "$HEALTH" in *"\"version\":\"$VERSION_ESPERADA\""*) break ;; *) HEALTH="" ;; esac
+done
+if [ -z "$HEALTH" ]; then
+    echo "  Quién tiene el puerto $PUERTO:"; ss -ltnp "sport = :$PUERTO" 2>/dev/null | tail -n +2
+    falla "El agente $VERSION_ESPERADA quedó instalado pero NO respondió en https://127.0.0.1:$PUERTO/health"
+fi
+
+echo
+echo "════════════════════════════════════════════════════════════"
+echo "  ✓ Agente instalado y respondiendo"
+echo "════════════════════════════════════════════════════════════"
+echo "  $HEALTH"
+echo "  Arranca solo al prender la PC. La cajera no tiene que abrir nada."
+exit 0

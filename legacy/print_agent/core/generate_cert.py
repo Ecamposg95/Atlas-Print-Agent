@@ -25,8 +25,12 @@ def _cert_is_valid(cert_path: str, min_days_remaining: int = 30) -> bool:
         return False
 
 
-def generate_self_signed_cert():
-    cert_dir = os.path.join(os.path.dirname(__file__), "certs")
+def generate_self_signed_cert(cert_dir=None):
+    # Sin argumento: la carpeta certs/ junto a este archivo, como siempre (modo manual).
+    # El agente empaquetado pasa su directorio de estado (agent_state).
+    if cert_dir is None:
+        cert_dir = os.path.join(os.path.dirname(__file__), "certs")
+    cert_dir = os.fspath(cert_dir)
     if not os.path.exists(cert_dir):
         os.makedirs(cert_dir)
         print(f"Created directory: {cert_dir}")

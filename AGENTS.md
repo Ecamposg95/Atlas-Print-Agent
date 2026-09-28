@@ -17,7 +17,8 @@ GX420t. El agente está en migración hacia un paquete unificado; las etiquetas 
 |---|---|
 | `atlas_labels/`, `tests/labels/` | **Desarrollo normal.** Aquí es donde se trabaja hoy. |
 | `installers/labels/` | Tocar solo junto con un cambio de empaquetado. Tras cambiar `atlas_labels/` hay que **regenerar el `.exe`**. |
-| `legacy/print_agent/` | **Congelado.** Es la referencia de campo durante la migración: se lee, no se le agregan features. Un arreglo aquí solo si algo está roto en producción hoy. |
+| `installers/agent/`, `tests/agent/` | **Desarrollo normal.** Empaquetado y autoarranque del agente (`.deb`, `.pkg`, `.exe`). `lanzador.py` y `agent_state.py` en `legacy/print_agent/core/` son parte de esto. |
+| `legacy/print_agent/` | **Congelado**, salvo la excepción acotada del autoarranque (spec 2026-09-22 §5.2 y rulings del plan 2026-09-28): directorio de estado, `agent.conf`, certificado en proceso, `run()`, versión. Un arreglo aquí solo si algo está roto en producción hoy. |
 | `legacy/tests/` | **No los "arregles".** 3 de 30 fallan a propósito (ver más abajo). |
 | `docs/superpowers/specs/` | Diseños aprobados. Si la implementación se aparta del spec, se actualiza el spec y se anota el *ruling*. |
 | `dist/`, `build/`, `*.spec` | Ignorados por git. No los versiones. |
@@ -32,7 +33,15 @@ uv run --no-project --with openpyxl --with pytest python -m pytest tests/labels 
 uv run --no-project --with fastapi --with uvicorn --with pydantic --with cryptography --with pytest \
   python -m pytest legacy/tests -q
 
-# Agente en local
+# Tests del agente empaquetado
+uv run --no-project --with fastapi --with uvicorn --with pydantic --with cryptography --with pytest \
+  python -m pytest tests/agent -q
+
+# Binario, prueba de humo y .deb (Python del sistema, no el de uv: PyInstaller necesita libpython)
+python installers/agent/construir.py && python installers/agent/humo.py
+bash installers/agent/linux/build_deb.sh
+
+# Agente en local — estado en ~/.local/state/atlas-print-agent (o ATLAS_AGENT_STATE_DIR)
 cd legacy/print_agent/core && python main.py     # https://127.0.0.1:9100
 
 # App de etiquetas
@@ -79,6 +88,11 @@ python -m atlas_labels imprimir catalogo.xlsx --dry-run --impresora "ZDesigner G
 - Módulos pequeños con una sola responsabilidad. Si un archivo crece mucho, está haciendo de más.
 
 ## Trampas conocidas (ya nos costaron tiempo)
+
+- **Una release del agente se publica empujando un tag `vX.Y.Z` que coincida con `VERSION` de `main.py`**; el
+  workflow `release-agente` falla si no. El runbook de instalación está en `installers/agent/README.md`.
+- **`generate_cert.py` tiene fin de línea CRLF** y `main.py` LF. Al editarlos, conserva el que tienen: un cambio
+  de fin de línea convierte el diff en el archivo completo.
 
 - **La Zebra en modo EPL.** Que la cola de Windows se llame `ZDesigner GX420t (EPL)` da igual — se imprime en
   RAW. Pero si no sale nada, la impresora está físicamente en EPL y hay que cambiarla con Zebra Setup Utilities.

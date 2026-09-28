@@ -1,0 +1,15 @@
+#!/bin/bash
+# remove conserva /var/lib/atlas-print-agent (certificado y agent.conf): reinstalar
+# no obliga a aceptar el certificado otra vez. purge lo borra.
+set -u
+case "${1:-}" in
+    remove)
+        rm -rf /etc/systemd/system/atlas-print-agent.service.d
+        systemctl daemon-reload >/dev/null 2>&1 || true
+        ;;
+    purge)
+        rm -rf /etc/systemd/system/atlas-print-agent.service.d /var/lib/atlas-print-agent
+        systemctl daemon-reload >/dev/null 2>&1 || true
+        ;;
+esac
+exit 0

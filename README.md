@@ -75,12 +75,15 @@ Requiere Python 3.10 o superior (en macOS basta el 3.9.6 de las herramientas de 
 
 ### Instalación por sistema
 
+**En una caja se instala el paquete de su sistema** (`.deb`, `.pkg` o `.exe`) desde la última release, y el agente
+arranca solo al prender la PC. Paso a paso, rodeos de SmartScreen/Gatekeeper y verificación:
+[`installers/agent/README.md`](installers/agent/README.md). Lo de abajo es el **modo manual** de las cajas que
+todavía no se convierten.
+
 | Sistema | Comando | Resultado |
 |---|---|---|
 | **Windows** | doble clic en `legacy/print_agent/impresora_win.bat` | Crea venv, instala dependencias, genera certificado y arranca. **No queda como servicio**: tras reiniciar hay que volver a ejecutarlo. |
 | **Ubuntu** (hoy) | `bash legacy/print_agent/impresora_linux.sh` | Instala CUPS si falta, venv, certificado, grupo `lpadmin`. **La ventana debe quedar abierta.** |
-| **Ubuntu** (destino) | `sudo bash legacy/print_agent/core/instalar-servicio-linux.sh` | Unidad systemd `atlas-print-agent` habilitada al arranque: la cajera no abre nada. |
-| **macOS** (destino) | `bash legacy/print_agent/core/instalar-servicio-mac.sh` | LaunchAgent `com.atlasone.print-agent` con `RunAtLoad` + `KeepAlive`. Sin sudo. |
 
 Para correrlo a mano durante el desarrollo:
 
@@ -94,7 +97,7 @@ python main.py
 ### Comprobar que vive
 
 ```bash
-curl -k https://127.0.0.1:9100/health     # {"status":"ok","service":...,"version":"3.0.0","os":...}
+curl -k https://127.0.0.1:9100/health     # {"status":"ok","service":...,"version":"3.1.0","os":...}
 curl -k https://127.0.0.1:9100/printers   # lista de colas locales
 ```
 

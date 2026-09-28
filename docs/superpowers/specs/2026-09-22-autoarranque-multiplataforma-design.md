@@ -1,6 +1,8 @@
 # Autoarranque multiplataforma del Atlas Print Agent: diseño
 
-**Estado:** diseño aprobado por el dueño el 2026-09-22; pendiente escribir el plan de implementación.
+**Estado:** diseño aprobado por el dueño el 2026-09-22; implementado según
+[`../plans/2026-09-28-autoarranque-multiplataforma.md`](../plans/2026-09-28-autoarranque-multiplataforma.md). Rulings de la
+implementación en el §14.
 
 **Relación con el spec del agente unificado:** esto implementa la sección 5.4 (*Instalación y autoarranque*) de
 [`2026-09-21-atlas-print-agent-design.md`](2026-09-21-atlas-print-agent-design.md), y **solo esa**. La
@@ -374,3 +376,41 @@ siguiente paso grande y no es requisito de esto.
 ejemplo) queda fuera hasta que exista una; agregarlo después es añadir un runner a la matriz, no rediseñar
 nada. En macOS sí se publican las dos arquitecturas desde el primer día, porque las Mac de campo pueden ser
 Intel o Apple Silicon indistintamente.
+
+## 14. Rulings de la implementación
+
+Decisiones tomadas al planear e implementar que se apartan de lo escrito arriba (2026-09-28):
+
+1. **`--onedir` en vez de `--onefile`.** Con un instalador de por medio, `--onefile` no aporta nada y cuesta: se
+   descomprime en un temporal en cada arranque, deja carpetas `_MEI*` huérfanas cada vez que el proceso muere por
+   `kill -9` (que es justo lo que `Restart=always` y la prueba de revivir provocan), y en Windows son dos procesos
+   (cargador + agente), de modo que matar al hijo deja vivo al padre y el Programador de tareas no se entera. El
+   análisis del §5.1 sigue valiendo: en `--onedir` el `__file__` de `main` tampoco es una ruta real.
+2. **Dos guardas más en `main.py`**: `Path(__file__).stat()` del banner revienta bajo PyInstaller (el archivo no
+   existe), y el reintento de `pywin32_postinstall` con `sys.executable` relanzaría el propio agente.
+3. **`run()` y `lanzador.py`.** El comportamiento "ya está activo" del §6.2/§6.4 necesita un punto de entrada que
+   decida antes de arrancar uvicorn; el cuerpo de `if __name__ == "__main__"` pasa a `def run()`.
+4. **En Linux el directorio se resuelve así**: `ATLAS_AGENT_STATE_DIR` > `$STATE_DIRECTORY` (lo pone systemd por
+   `StateDirectory=`) > `/var/lib/atlas-print-agent` si existe y es escribible (el ícono de doble clic, corriendo
+   como la cajera, usa el mismo certificado que el servicio) > `~/.local/state/atlas-print-agent` (desarrollo).
+5. **Windows: además del disparador de inicio de sesión, uno cada minuto con `IgnoreNew`.** `RestartOnFailure`
+   del Programador solo actúa si la tarea no logra lanzarse, no cuando el proceso muere. El disparador periódico
+   es un vigilante sin código: si el agente vive, la instancia nueva se ignora; si murió, lo levanta en ≤ 60 s.
+6. **Runners**: `macos-13` ya no existe; Intel se construye en `macos-15-intel`, Apple Silicon en `macos-15`. El
+   `.deb` se construye en `ubuntu-22.04` (glibc 2.35), no en `ubuntu-latest`: un binario hecho en 24.04 no arranca
+   en una caja con 22.04. **Mínimo soportado: Ubuntu 22.04.**
+7. **El `.deb` instala en `/usr/lib/atlas-print-agent/`**, no en `/opt/atlas-print-agent/`, que es donde el
+   instalador legado de sistema ponía su copia con venv.
+8. **Fin de línea.** `generate_cert.py` está en CRLF y así se queda; `main.py` en LF.
+9. **`registrar.ps1` y el `.iss` llevan BOM UTF-8**: Windows PowerShell 5.1 e Inno Setup leen sin BOM como ANSI.
+10. **El workflow también corre en `pull_request`** (sin publicar), para tener instaladores de prueba antes de
+    fusionar: `workflow_dispatch` solo corre workflows que ya están en `main`.
+
+### Verificación
+
+| Plataforma | Qué se verificó | Dónde | Resultado |
+|---|---|---|---|
+| Linux (binario) | PyInstaller `--onedir`; humo: `/health` con `3.1.0`, certificado y log en el directorio de estado | WSL, 2026-09-28 | ✓ |
+| Ubuntu (`.deb`) | instalar, revivir tras `kill -9`, huella estable al reinstalar, falla ruidosa, reinicio | WSL | pendiente (necesita sudo del dueño) |
+| macOS (`.pkg`) | construcción en CI; instalación en la Mac del dueño | CI / campo | pendiente |
+| Windows (`.exe`) | construcción en CI; instalación en la PC con la térmica | CI / campo | pendiente |

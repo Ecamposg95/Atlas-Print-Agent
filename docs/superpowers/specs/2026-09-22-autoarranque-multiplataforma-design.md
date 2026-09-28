@@ -412,5 +412,8 @@ Decisiones tomadas al planear e implementar que se apartan de lo escrito arriba 
 |---|---|---|---|
 | Linux (binario) | PyInstaller `--onedir`; humo: `/health` con `3.1.0`, certificado y log en el directorio de estado | WSL, 2026-09-28 | ✓ |
 | Ubuntu (`.deb`) | instalar, revivir tras `kill -9`, huella estable al reinstalar, falla ruidosa, reinicio | WSL | pendiente (necesita sudo del dueño) |
-| macOS (`.pkg`) | construcción en CI; instalación en la Mac del dueño | CI / campo | pendiente |
-| Windows (`.exe`) | construcción en CI; instalación en la PC con la térmica | CI / campo | pendiente |
+| macOS (`.pkg`) | construcción y humo del binario en `macos-15` (arm64) y `macos-15-intel` (x86_64) | CI, PR #2 | ✓ |
+| macOS (`.pkg`) | instalación, LaunchAgent, certificado conservado, ticket real | Mac del dueño | pendiente |
+| Windows (`.exe`) | construcción y humo en `windows-latest` | CI, PR #2 | ✓ |
+| Windows (`.exe`) | instalación sin UAC en la PC de desarrollo: tarea registrada, `/health` 3.1.0, certificado previo conservado; `taskkill` del agente → **revivió en 34 s** (disparador por minuto); `POST /print` a la Zebra aceptado | PC del dueño (sin térmica), 2026-09-28 | ✓ |
+| Windows (`.exe`) | ticket ESC/POS real en la térmica | PC con la térmica | pendiente |

@@ -35,6 +35,9 @@ def _health() -> dict | None:
 
 
 def main() -> int:
+    # La consola de Windows en CI es cp1252: sin esto, imprimir "✓" tumba la prueba.
+    for flujo in (sys.stdout, sys.stderr):
+        flujo.reconfigure(encoding="utf-8", errors="replace")
     binario = construir.binario()
     esperada = version_agente.leer_version()
     estado = Path(tempfile.mkdtemp(prefix="atlas-humo-"))

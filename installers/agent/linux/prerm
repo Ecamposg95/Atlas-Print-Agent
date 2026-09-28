@@ -1,0 +1,9 @@
+#!/bin/bash
+# remove: se para y se quita del arranque. upgrade: solo se para; el postinst
+# de la versión nueva lo vuelve a levantar.
+set -u
+case "${1:-}" in
+    remove|deconfigure) systemctl disable --now atlas-print-agent >/dev/null 2>&1 || true ;;
+    upgrade|failed-upgrade) systemctl stop atlas-print-agent >/dev/null 2>&1 || true ;;
+esac
+exit 0

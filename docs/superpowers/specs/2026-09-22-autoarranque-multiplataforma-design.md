@@ -405,6 +405,12 @@ Decisiones tomadas al planear e implementar que se apartan de lo escrito arriba 
 9. **`registrar.ps1` y el `.iss` llevan BOM UTF-8**: Windows PowerShell 5.1 e Inno Setup leen sin BOM como ANSI.
 10. **El workflow también corre en `pull_request`** (sin publicar), para tener instaladores de prueba antes de
     fusionar: `workflow_dispatch` solo corre workflows que ya están en `main`.
+11. **El lanzador viejo se convierte en atajo al agente nuevo** (el original queda como `.retirado`), en los tres
+    sistemas, salvo que viva dentro de un repositorio git. Salió de la revisión final: el `impresora_win.bat`
+    viejo "libera" el 9100 matando lo que lo tenga, así que un doble clic de costumbre tumbaba al agente
+    instalado. Reescrito, muestra *"ya está activo"*.
+12. **Los instaladores exigen que `/health` traiga la versión recién instalada**, no solo que conteste un agente:
+    un agente manual que sobreviviera con el puerto daba un falso "instalado y respondiendo".
 
 ### Verificación
 
@@ -416,4 +422,5 @@ Decisiones tomadas al planear e implementar que se apartan de lo escrito arriba 
 | macOS (`.pkg`) | instalación, LaunchAgent, certificado conservado, ticket real | Mac del dueño | pendiente |
 | Windows (`.exe`) | construcción y humo en `windows-latest` | CI, PR #2 | ✓ |
 | Windows (`.exe`) | instalación sin UAC en la PC de desarrollo: tarea registrada, `/health` 3.1.0, certificado previo conservado; `taskkill` del agente → **revivió en 34 s** (disparador por minuto); `POST /print` a la Zebra aceptado | PC del dueño (sin térmica), 2026-09-28 | ✓ |
+| Windows (`.exe`) | actualización encima de la instalación previa (sin "archivo en uso"), `.bat` viejo convertido en atajo, `/health` exige 3.1.0 | PC del dueño, 2026-09-28 | ✓ |
 | Windows (`.exe`) | ticket ESC/POS real en la térmica | PC con la térmica | pendiente |

@@ -1,0 +1,19 @@
+#!/bin/bash
+# Corre como root antes de copiar el .app: baja el agente que esté corriendo
+# (servicio legado o nuevo, y el modo manual) para no pisar un binario en uso.
+set -u
+LABEL=com.atlasone.print-agent
+USUARIO="$(stat -f %Su /dev/console)"
+if [ -n "$USUARIO" ] && [ "$USUARIO" != root ] && [ "$USUARIO" != loginwindow ]; then
+    UIDC="$(id -u "$USUARIO")"
+    launchctl bootout "gui/$UIDC/$LABEL" 2>/dev/null
+fi
+# Primero el envoltorio `while true` de impresora_mac.sh, luego el agente manual.
+for patron in '(bash|sh|zsh) .*impresora_mac\.sh$' 'python3? .*core/main\.py$'; do
+    pkill -f "$patron" 2>/dev/null
+done
+sleep 2
+for patron in '(bash|sh|zsh) .*impresora_mac\.sh$' 'python3? .*core/main\.py$'; do
+    pkill -9 -f "$patron" 2>/dev/null
+done
+exit 0

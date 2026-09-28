@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  LaunchAgent del agente de impresión Atlas. Plantilla: el postinstall del .pkg
+  sustituye la ruta del home y lo escribe en ~/Library/LaunchAgents/.
+  De USUARIO, no LaunchDaemon: ve la misma cola de CUPS que la cajera.
+  Los orígenes CORS no van aquí sino en agent.conf del directorio de estado.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.atlasone.print-agent</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Applications/Atlas Print Agent.app/Contents/MacOS/Atlas Print Agent</string>
+    <string>--servicio</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <!-- launchd no hereda el PATH de la sesión; el agente llama lp, lpstat, lpadmin, lpinfo. -->
+    <key>PATH</key><string>/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin</string>
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>5</integer>
+  <key>StandardOutPath</key><string>__HOME__/Library/Logs/AtlasPrintAgent/agent.out.log</string>
+  <key>StandardErrorPath</key><string>__HOME__/Library/Logs/AtlasPrintAgent/agent.err.log</string>
+</dict>
+</plist>

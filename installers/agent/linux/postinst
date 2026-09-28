@@ -123,10 +123,21 @@ fi
 # ── El lanzador viejo pasa a abrir el agente nuevo ────────────────────────────
 # La cajera lo seguirá usando por costumbre. Reescrito, muestra "ya está activo"
 # en vez de levantar un segundo agente que le pelee el 9100 al servicio.
+# Un lanzador dentro de un repositorio git es una copia de desarrollo, no la de la
+# caja: no se toca (reescribirlo ensuciaría el repo).
+en_repo_git() {
+    local p="$1"
+    while [ -n "$p" ] && [ "$p" != / ] && [ "$p" != . ]; do
+        [ -e "$p/.git" ] && return 0
+        p="$(dirname "$p")"
+    done
+    return 1
+}
 IFS=$'\n'
 for d in $LEGADO; do
     f="$d/impresora_linux.sh"
     [ -f "$f" ] || continue
+    en_repo_git "$d" && continue
     grep -q 'atlas-print-agent instalado' "$f" && continue
     cp -p "$f" "$f.retirado"
     cat > "$f" <<'EOF'

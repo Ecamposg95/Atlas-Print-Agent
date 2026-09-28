@@ -68,9 +68,20 @@ if ((Test-Path (Join-Path $Certs "cert.pem")) -and (Test-Path (Join-Path $Certs 
 # 2b. El lanzador viejo pasa a abrir el agente nuevo. El original "libera" el
 #     puerto 9100 matando lo que lo tenga: con un doble clic de costumbre tumbaría
 #     al agente instalado. Reescrito, solo muestra "ya está activo".
+# Un lanzador dentro de un repositorio git es una copia de desarrollo, no la de la
+# caja: no se toca (reescribirlo ensuciaría el repo).
+function En-RepoGit([string]$ruta) {
+    $p = $ruta
+    while ($p) {
+        if (Test-Path (Join-Path $p ".git")) { return $true }
+        $p = Split-Path $p -Parent
+    }
+    return $false
+}
 foreach ($d in $legado) {
     $bat = Join-Path $d "impresora_win.bat"
     if (-not (Test-Path $bat)) { continue }
+    if (En-RepoGit $d) { Anotar "Se deja intacto (está en un repositorio git): $bat"; continue }
     if ((Get-Content -Raw $bat) -match "atlas-print-agent instalado") { continue }
     Copy-Item $bat "$bat.retirado" -Force
     @(

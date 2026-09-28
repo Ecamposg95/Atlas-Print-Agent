@@ -73,9 +73,20 @@ EOF
 fi
 
 # ── El lanzador viejo pasa a abrir el agente nuevo ────────────────────────────
+# Un lanzador dentro de un repositorio git es una copia de desarrollo, no la de la
+# caja: no se toca (reescribirlo ensuciaría el repo).
+en_repo_git() {
+    local p="$1"
+    while [ -n "$p" ] && [ "$p" != / ] && [ "$p" != . ]; do
+        [ -e "$p/.git" ] && return 0
+        p="$(dirname "$p")"
+    done
+    return 1
+}
 while IFS= read -r d; do
     f="$d/impresora_mac.sh"
     [ -n "$d" ] && [ -f "$f" ] || continue
+    en_repo_git "$d" && continue
     grep -q 'atlas-print-agent instalado' "$f" && continue
     cp -p "$f" "$f.retirado" || continue
     cat > "$f" <<'EOF'

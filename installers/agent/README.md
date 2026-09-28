@@ -37,9 +37,20 @@ abierta.
 
 ## 2. Ubuntu
 
+**No uses el botón de descarga de Atlas One**: todavía entrega el agente viejo (un ZIP con `impresora_linux.sh`).
+Baja el `.deb` de la release directo en la caja:
+
 ```bash
+cd ~/Descargas
+wget https://github.com/Ecamposg95/Atlas-Print-Agent/releases/download/v3.1.0/atlas-print-agent_3.1.0_amd64.deb
+sudo apt update
 sudo apt install ./atlas-print-agent_3.1.0_amd64.deb
 ```
+
+- La nota `N: La descarga está siendo realizada en un sandbox como superusuario…` es normal al instalar un `.deb`
+  desde tu carpeta personal; no es un error.
+- Probado en campo el 2026-09-28 en Ubuntu 24.04: instala, responde, y tras reiniciar el agente ya está arriba sin
+  abrir nada.
 
 - Corre como **el usuario que ejecutó `sudo`**. Si la cajera es otro usuario:
   `sudo ATLAS_AGENT_USER=<usuario-de-la-caja> apt install ./atlas-print-agent_3.1.0_amd64.deb`.

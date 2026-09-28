@@ -412,12 +412,28 @@ Decisiones tomadas al planear e implementar que se apartan de lo escrito arriba 
 12. **Los instaladores exigen que `/health` traiga la versión recién instalada**, no solo que conteste un agente:
     un agente manual que sobreviviera con el puerto daba un falso "instalado y respondiendo".
 
+### Hallazgos de campo (2026-09-28)
+
+- **El botón de descarga de Atlas One sigue entregando el ZIP viejo** (modo manual con `impresora_linux.sh`). El
+  dueño lo bajó creyendo que era el agente nuevo. Hasta que se ejecuten las peticiones 1–3 de
+  [`../../peticiones-a-atlas-one.md`](../../peticiones-a-atlas-one.md), la descarga es de la release:
+  `https://github.com/Ecamposg95/Atlas-Print-Agent/releases/download/v3.1.0/<archivo>`.
+- **La búsqueda del certificado previo entra a la Papelera.** En la primera caja Ubuntu el `postinst` conservó el
+  `cert.pem` de `~/.local/share/Trash/files/Atlas-Print-Agent-main/…` (una copia vieja del ZIP del repo). No rompe
+  nada —si el navegador nunca lo aceptó, lo pide una vez—, pero la búsqueda debería excluir
+  `~/.local/share/Trash` (y `~/.Trash` en macOS). Pendiente de corregir en la siguiente versión.
+- **"Ubuntu puro" rara vez lo es**: una caja donde alguien bajó el ZIP del repo o el del botón de Atlas One ya
+  tiene lanzadores y certificados viejos. El instalador los encontró y convirtió los lanzadores en atajos, como
+  se diseñó.
+
 ### Verificación
 
 | Plataforma | Qué se verificó | Dónde | Resultado |
 |---|---|---|---|
 | Linux (binario) | PyInstaller `--onedir`; humo: `/health` con `3.1.0`, certificado y log en el directorio de estado | WSL, 2026-09-28 | ✓ |
-| Ubuntu (`.deb`) | instalar, revivir tras `kill -9`, huella estable al reinstalar, falla ruidosa, reinicio | WSL | pendiente (necesita sudo del dueño) |
+| Ubuntu (`.deb`) | **primera caja real**: Ubuntu 24.04 (Lenovo IdeaCentre AIO 3, usuario `eleven-boutique`), `.deb` de la release `v3.1.0` bajado con `wget`; `apt` instaló solo `curl` (CUPS ya estaba), servicio como la cajera, `✓ Agente instalado y respondiendo`; **tras reiniciar, `/health` responde sin abrir nada** (criterio 1) | tienda, 2026-09-28 | ✓ |
+| Ubuntu (`.deb`) | revivir tras `kill -9`, huella estable al reinstalar, falla ruidosa | WSL | pendiente |
+| Ubuntu (`.deb`) | cola raw de la térmica y ticket real desde el POS | tienda | pendiente |
 | macOS (`.pkg`) | construcción y humo del binario en `macos-15` (arm64) y `macos-15-intel` (x86_64) | CI, PR #2 | ✓ |
 | macOS (`.pkg`) | instalación, LaunchAgent, certificado conservado, ticket real | Mac del dueño | pendiente |
 | Windows (`.exe`) | construcción y humo en `windows-latest` | CI, PR #2 | ✓ |

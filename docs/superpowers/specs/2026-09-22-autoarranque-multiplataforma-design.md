@@ -423,4 +423,5 @@ Decisiones tomadas al planear e implementar que se apartan de lo escrito arriba 
 | Windows (`.exe`) | construcción y humo en `windows-latest` | CI, PR #2 | ✓ |
 | Windows (`.exe`) | instalación sin UAC en la PC de desarrollo: tarea registrada, `/health` 3.1.0, certificado previo conservado; `taskkill` del agente → **revivió en 34 s** (disparador por minuto); `POST /print` a la Zebra aceptado | PC del dueño (sin térmica), 2026-09-28 | ✓ |
 | Windows (`.exe`) | actualización encima de la instalación previa (sin "archivo en uso"), `.bat` viejo convertido en atajo, `/health` exige 3.1.0 | PC del dueño, 2026-09-28 | ✓ |
+| Windows (`.exe`) | papel real: etiqueta ZPL por `POST /print` a la Zebra, y etiquetas desde la UI de Atlas One a través del agente | PC del dueño, 2026-09-28 | ✓ (confirmado por el dueño) |
 | Windows (`.exe`) | ticket ESC/POS real en la térmica | PC con la térmica | pendiente |

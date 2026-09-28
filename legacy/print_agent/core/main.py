@@ -26,7 +26,10 @@ Features
   - Payload guard (3 MB base64 máx).
   - CORS configurado para dominios Atlas + localhost.
   - Access-Control-Allow-Private-Network para Chrome PNA.
-  - Config por env vars: ATLAS_AGENT_HOST, ATLAS_AGENT_PORT.
+  - Config: variables de entorno o agent.conf en el directorio de estado
+    (ATLAS_AGENT_HOST, ATLAS_AGENT_PORT, ATLAS_AGENT_ORIGINS). El entorno gana.
+  - Estado (certificado, agent.conf, log) fuera de la carpeta de instalación:
+    ver agent_state.py.
 """
 from __future__ import annotations
 
@@ -48,6 +51,18 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+
+# El estado (certificado, agent.conf, log) vive fuera de la carpeta de instalación:
+# bajo PyInstaller __file__ no es una ruta real, y reinstalar no debe tocar el
+# certificado. Ver docs/superpowers/specs/2026-09-22-autoarranque-multiplataforma-design.md §5.
+_HERE = Path(__file__).resolve().parent
+if str(_HERE) not in sys.path:
+    sys.path.insert(0, str(_HERE))
+import agent_state  # noqa: E402
+
+STATE_DIR = agent_state.state_dir()
+CERT_DIR = STATE_DIR / "certs"
+_CONFIG = agent_state.load_config(STATE_DIR)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Platform-specific imports (lazy, best-effort)
@@ -71,23 +86,34 @@ if _IS_WINDOWS:
         import win32print as _win32print
         win32print = _win32print
     except ImportError as _e:
-        try:
-            subprocess.run(
-                [sys.executable, "-m", "pywin32_postinstall", "-install"],
-                check=True, capture_output=True,
-            )
-            import win32print as _win32print
-            win32print = _win32print
-        except Exception as _e2:
-            _WIN32_ERROR = f"pywin32 not available: {_e2 or _e}"
+        if getattr(sys, "frozen", False):
+            # En el binario sys.executable ES el agente: relanzarlo no instalaría nada.
+            _WIN32_ERROR = f"pywin32 not available: {_e}"
+        else:
+            try:
+                subprocess.run(
+                    [sys.executable, "-m", "pywin32_postinstall", "-install"],
+                    check=True, capture_output=True,
+                )
+                import win32print as _win32print
+                win32print = _win32print
+            except Exception as _e2:
+                _WIN32_ERROR = f"pywin32 not available: {_e2 or _e}"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Logging (rotating file + console)
 # ─────────────────────────────────────────────────────────────────────────────
 _LOG_FORMAT = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-_log_file = Path(__file__).parent / "agent.log"
-_file_handler = RotatingFileHandler(_log_file, maxBytes=5 * 1024 * 1024, backupCount=3)
-_file_handler.setFormatter(_LOG_FORMAT)
+_log_file = agent_state.log_dir() / "agent.log"
+try:
+    _log_file.parent.mkdir(parents=True, exist_ok=True)
+    _file_handler: Optional[logging.Handler] = RotatingFileHandler(
+        _log_file, maxBytes=5 * 1024 * 1024, backupCount=3
+    )
+    _file_handler.setFormatter(_LOG_FORMAT)
+except OSError:
+    # Sin log en archivo antes que sin agente: la consola/journal sigue recibiendo todo.
+    _file_handler = None
 _console_handler = logging.StreamHandler()
 # Force UTF-8 on Windows consoles to avoid UnicodeEncodeError on cp1252/cp850.
 # errors='replace' is a safety net in case the stream ignores the encoding arg.
@@ -100,21 +126,22 @@ _console_handler.setFormatter(_LOG_FORMAT)
 
 logger = logging.getLogger("AtlasPrintAgent")
 logger.setLevel(logging.INFO)
-logger.addHandler(_file_handler)
+if _file_handler is not None:
+    logger.addHandler(_file_handler)
 logger.addHandler(_console_handler)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # App + middleware
 # ─────────────────────────────────────────────────────────────────────────────
-VERSION = "3.0.0"
+VERSION = "3.1.0"
 MAX_PAYLOAD_BYTES = 3 * 1024 * 1024  # base64 chars
 
 app = FastAPI(title="Atlas POS Local Print Agent", version=VERSION)
 
-# Dominios extra vía env (separados por coma) para despliegues con dominio
-# propio. Ej: ATLAS_AGENT_ORIGINS="https://pos.miempresa.com,https://app.atlasone.mx"
-_ENV_ORIGINS = [o.strip() for o in os.environ.get("ATLAS_AGENT_ORIGINS", "").split(",") if o.strip()]
+# Dominios extra (separados por coma) para despliegues con dominio propio, por
+# variable de entorno o en agent.conf. Ej: ATLAS_AGENT_ORIGINS=https://pos.miempresa.com
+_ENV_ORIGINS = [o.strip() for o in _CONFIG.get("ATLAS_AGENT_ORIGINS", "").split(",") if o.strip()]
 _CORS_ORIGINS = [
     "https://datax.up.railway.app",
     "https://qa-datax.up.railway.app",
@@ -345,8 +372,7 @@ def _cups_queues_info() -> list[dict]:
 # Helpers — SSL cert info
 # ─────────────────────────────────────────────────────────────────────────────
 def _cert_info() -> dict:
-    cert_dir = Path(__file__).parent / "certs"
-    cert_path = cert_dir / "cert.pem"
+    cert_path = CERT_DIR / "cert.pem"
     if not cert_path.exists():
         return {"exists": False}
     try:
@@ -1311,9 +1337,8 @@ def _print_unix(printer_name: str, raw_data: bytes) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 def _ensure_certs() -> tuple[Optional[Path], Optional[Path]]:
     """Genera certs si faltan o están por vencer. Retorna (key, cert) o (None, None)."""
-    cert_dir = Path(__file__).parent / "certs"
-    key_file = cert_dir / "key.pem"
-    cert_file = cert_dir / "cert.pem"
+    key_file = CERT_DIR / "key.pem"
+    cert_file = CERT_DIR / "cert.pem"
 
     need_generate = not (key_file.exists() and cert_file.exists())
     if not need_generate:
@@ -1324,16 +1349,13 @@ def _ensure_certs() -> tuple[Optional[Path], Optional[Path]]:
             need_generate = True
 
     if need_generate:
-        gen_script = Path(__file__).parent / "generate_cert.py"
-        if gen_script.exists():
-            try:
-                logger.info("Generando certificados SSL...")
-                subprocess.run([sys.executable, str(gen_script)], check=True, timeout=30)
-            except Exception as e:
-                logger.warning(f"Fallo generate_cert.py: {e}. Arrancara en HTTP.")
-                return None, None
-        else:
-            logger.warning("generate_cert.py no existe. Arrancara en HTTP.")
+        # En proceso: bajo PyInstaller sys.executable es el agente, no un intérprete.
+        try:
+            logger.info(f"Generando certificados SSL en {CERT_DIR}...")
+            import generate_cert
+            generate_cert.generate_self_signed_cert(CERT_DIR)
+        except Exception as e:
+            logger.warning(f"Fallo generate_cert: {e}. Arrancara en HTTP.")
             return None, None
 
     if key_file.exists() and cert_file.exists():
@@ -1341,13 +1363,19 @@ def _ensure_certs() -> tuple[Optional[Path], Optional[Path]]:
     return None, None
 
 
-if __name__ == "__main__":
-    port = int(os.environ.get("ATLAS_AGENT_PORT", 9100))
-    host = os.environ.get("ATLAS_AGENT_HOST", "127.0.0.1")
+def run() -> None:
+    """Arranca el agente y bloquea hasta que uvicorn termina."""
+    port = agent_state.port(_CONFIG)
+    host = agent_state.host(_CONFIG)
 
     # Version banner — helps identify legacy installs that were not updated.
     # IMPORTANT: ensure all stations run the same version shown here.
-    _build_mtime = Path(__file__).stat().st_mtime
+    # En el binario __file__ no existe en disco: la fecha es la del ejecutable.
+    _build_src = Path(sys.executable) if getattr(sys, "frozen", False) else Path(__file__)
+    try:
+        _build_mtime = _build_src.stat().st_mtime
+    except OSError:
+        _build_mtime = time.time()
     import datetime as _dt_mod
     _build_ts = _dt_mod.datetime.fromtimestamp(_build_mtime).strftime("%Y-%m-%d %H:%M")
     print(
@@ -1363,6 +1391,7 @@ if __name__ == "__main__":
     )
 
     logger.info(f"Atlas Print Agent v{VERSION} -- OS={_platform.system()} Python={sys.version.split()[0]}")
+    logger.info(f"Estado: {STATE_DIR}  Log: {_log_file}")
 
     if _IS_WINDOWS and not _spooler_running():
         logger.warning("Print Spooler service detenido -- intentando arrancarlo...")
@@ -1389,3 +1418,7 @@ if __name__ == "__main__":
         import traceback
         traceback.print_exc()
         raise
+
+
+if __name__ == "__main__":
+    run()

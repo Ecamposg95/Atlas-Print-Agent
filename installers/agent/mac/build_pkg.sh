@@ -17,7 +17,9 @@ mkdir -p "$RAIZ_PKG/Applications" "$SOPORTE" "$TMP/scripts"
 cp -R "$APP" "$RAIZ_PKG/Applications/"
 install -m 755 "$AQUI/desinstalar.sh" "$SOPORTE/"
 install -m 644 "$AQUI/com.atlasone.print-agent.plist" "$SOPORTE/"
-install -m 755 "$AQUI/scripts/preinstall" "$AQUI/scripts/postinstall" "$TMP/scripts/"
+install -m 755 "$AQUI/scripts/preinstall" "$TMP/scripts/"
+sed "s/__VERSION__/$VERSION/" "$AQUI/scripts/postinstall" > "$TMP/scripts/postinstall"
+chmod 755 "$TMP/scripts/postinstall"
 
 # pkgbuild marca los .app como reubicables por omisión: si alguien movió el .app,
 # el instalador actualizaría esa copia y el LaunchAgent apuntaría a la vieja.

@@ -8,12 +8,22 @@ if [ -n "$USUARIO" ] && [ "$USUARIO" != root ] && [ "$USUARIO" != loginwindow ];
     UIDC="$(id -u "$USUARIO")"
     launchctl bootout "gui/$UIDC/$LABEL" 2>/dev/null
 fi
+# Carpetas del modo manual, anotadas ANTES de matar los procesos: postinstall
+# saca de ahí el certificado y convierte el lanzador viejo en atajo al nuevo.
+# En macOS el Python de framework aparece como .../Python.app/Contents/MacOS/Python,
+# así que se busca por el script y no por el nombre del intérprete.
+LEGADO=/tmp/atlas-print-agent-legado.txt
+{
+    ps -axo command= | sed -n 's|.* \(/.*\)/impresora_mac\.sh$|\1|p'
+    ps -axo command= | sed -n 's|.* \(/.*\)/core/main\.py$|\1|p'
+} 2>/dev/null | sort -u > "$LEGADO"
+
 # Primero el envoltorio `while true` de impresora_mac.sh, luego el agente manual.
-for patron in '(bash|sh|zsh) .*impresora_mac\.sh$' 'python3? .*core/main\.py$'; do
+for patron in '(bash|sh|zsh) .*impresora_mac\.sh$' '[Pp]ython.* .*core/main\.py$'; do
     pkill -f "$patron" 2>/dev/null
 done
 sleep 2
-for patron in '(bash|sh|zsh) .*impresora_mac\.sh$' 'python3? .*core/main\.py$'; do
+for patron in '(bash|sh|zsh) .*impresora_mac\.sh$' '[Pp]ython.* .*core/main\.py$'; do
     pkill -9 -f "$patron" 2>/dev/null
 done
 exit 0

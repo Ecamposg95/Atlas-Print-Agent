@@ -50,7 +50,11 @@ function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   Codigo: Integer;
 begin
-  // Una actualización no puede reemplazar el .exe mientras corre.
+  // Una actualización no puede reemplazar el .exe mientras corre, y el disparador
+  // de cada minuto lo relanzaría a media copia: primero se apaga la tarea.
+  // registrar.ps1 la vuelve a registrar (y habilitar) al final.
+  Exec('schtasks.exe', '/End /TN "Atlas Print Agent"', '', SW_HIDE, ewWaitUntilTerminated, Codigo);
+  Exec('schtasks.exe', '/Change /TN "Atlas Print Agent" /DISABLE', '', SW_HIDE, ewWaitUntilTerminated, Codigo);
   Exec('taskkill.exe', '/F /IM atlas-print-agent.exe', '', SW_HIDE, ewWaitUntilTerminated, Codigo);
   Result := '';
 end;
@@ -64,7 +68,7 @@ begin
   begin
     WizardForm.StatusLabel.Caption := 'Arrancando el agente y comprobando que responda...';
     Parametros := '-NoProfile -ExecutionPolicy Bypass -File "' + ExpandConstant('{app}\instalador\registrar.ps1') +
-                  '" -Exe "' + ExpandConstant('{app}\atlas-print-agent.exe') + '"';
+                  '" -Exe "' + ExpandConstant('{app}\atlas-print-agent.exe') + '" -Version "{#Version}"';
     if (not Exec('powershell.exe', Parametros, '', SW_HIDE, ewWaitUntilTerminated, Codigo)) or (Codigo <> 0) then
       MsgBox('El agente quedó instalado pero NO respondió en https://127.0.0.1:9100/health.' + #13#10 + #13#10 +
              'La caja todavía no imprime. Revisa este archivo y llama a soporte:' + #13#10 +

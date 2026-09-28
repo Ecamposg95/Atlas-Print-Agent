@@ -21,8 +21,19 @@ Los paquetes salen de la [última release](https://github.com/Ecamposg95/Atlas-P
 **¿Mac con chip Apple o Intel?** Menú  → *Acerca de esta Mac*: *Chip Apple M…* es `arm64`; *Procesador Intel*
 es `x86_64`.
 
-Los tres instaladores **esperan a que `https://127.0.0.1:9100/health` responda y avisan con un error si no**. Si
-el instalador terminó sin error, el agente está corriendo.
+Los tres instaladores **esperan a que `https://127.0.0.1:9100/health` responda con la versión recién instalada y
+avisan con un error si no**. Si el instalador terminó sin error, el agente nuevo está corriendo.
+
+**Qué hacen con el modo manual.** Detienen la ventana de `impresora_*.sh` / `impresora_win.bat`, toman el
+certificado de la carpeta que la caja usaba (para que el navegador no vuelva a pedir aceptarlo) y **convierten el
+lanzador viejo en un atajo al agente nuevo** (el original queda como `.retirado`). Si la cajera le da doble clic
+por costumbre, ve *"El agente de impresión ya está activo"* en vez de levantar un segundo agente. En Windows esto
+importa de verdad: el `.bat` viejo mataba lo que tuviera el puerto 9100.
+
+**Si el certificado no aparece** (el instalador dice *"No había certificado previo"* en una caja que ya imprimía),
+cópialo a mano de `<carpeta-del-agente-viejo>/core/certs/` al directorio de estado (§5) **antes** de instalar, o
+después y reinicia el agente. La carpeta del agente viejo se ve en la ventana de la terminal que la cajera deja
+abierta.
 
 ## 2. Ubuntu
 
@@ -51,9 +62,10 @@ sudo apt install ./atlas-print-agent_3.1.0_amd64.deb
    ```
 
    y **cerrar la ventana de Terminal donde corre `impresora_mac.sh`**.
-2. Doble clic en el `.pkg`. Como no está firmado, macOS dirá que *no puede comprobar el desarrollador*: cerrar el
-   aviso, **clic derecho sobre el `.pkg` → Abrir → Abrir**. Si no aparece la opción: *Ajustes del Sistema →
-   Privacidad y seguridad → Abrir de todos modos*.
+2. **Instalar con la sesión de la cajera abierta**: el LaunchAgent queda en el usuario que tenga la pantalla.
+   Doble clic en el `.pkg`. Como no está firmado, macOS dirá que *no puede comprobar el desarrollador*: cerrar el
+   aviso y ir a **Ajustes del Sistema → Privacidad y seguridad → (abajo) "Abrir de todos modos"** e ingresar la
+   contraseña. En macOS 15 el truco de clic derecho → *Abrir* ya no basta; en versiones anteriores también sirve.
 3. La primera vez, macOS 15 muestra el aviso *"Elementos de inicio agregados"*. **No desactivarlo**: si se apaga,
    la Mac vuelve a quedar sin agente al iniciar sesión, sin avisar a nadie.
 

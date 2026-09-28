@@ -23,7 +23,9 @@ ln -s /usr/lib/atlas-print-agent/atlas-print-agent "$ARBOL/usr/bin/atlas-print-a
 install -m 644 "$AQUI/atlas-print-agent.service" "$ARBOL/usr/lib/systemd/system/"
 install -m 644 "$AQUI/atlas-print-agent.desktop" "$ARBOL/usr/share/applications/"
 sed "s/__VERSION__/$VERSION/" "$AQUI/control" > "$ARBOL/DEBIAN/control"
-install -m 755 "$AQUI/postinst" "$AQUI/prerm" "$AQUI/postrm" "$ARBOL/DEBIAN/"
+install -m 755 "$AQUI/prerm" "$AQUI/postrm" "$ARBOL/DEBIAN/"
+sed "s/__VERSION__/$VERSION/" "$AQUI/postinst" > "$ARBOL/DEBIAN/postinst"
+chmod 755 "$ARBOL/DEBIAN/postinst"
 chmod 755 "$ARBOL/DEBIAN"
 
 mkdir -p "$RAIZ/dist"

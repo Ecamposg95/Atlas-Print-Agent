@@ -5,6 +5,9 @@ set -u
 LABEL=com.atlasone.print-agent
 APP="/Applications/Atlas Print Agent.app"
 PLANTILLA="/Library/Application Support/AtlasPrintAgent/com.atlasone.print-agent.plist"
+VERSION_ESPERADA="__VERSION__"   # build_pkg.sh la sustituye
+LEGADO=/tmp/atlas-print-agent-legado.txt   # lo escribe preinstall
+[ -f "$LEGADO" ] || : > "$LEGADO"
 
 falla() {
     echo "✗ $*"
@@ -32,13 +35,19 @@ if [ -f "$ESTADO/certs/cert.pem" ] && [ -f "$ESTADO/certs/key.pem" ]; then
     echo "✓ Certificado existente conservado."
 else
     PREVIO=""
-    for d in "$ESTADO" "$HOGAR/Downloads/print_agent/core/certs" "$HOGAR/Descargas/print_agent/core/certs"; do
+    # Primero la carpeta que la caja usaba de verdad (anotada por preinstall).
+    while IFS= read -r d; do
+        if [ -n "$d" ] && [ -f "$d/core/certs/cert.pem" ] && [ -f "$d/core/certs/key.pem" ]; then
+            PREVIO="$d/core/certs"; break
+        fi
+    done < "$LEGADO"
+    [ -z "$PREVIO" ] && for d in "$ESTADO" "$HOGAR/Downloads/print_agent/core/certs" "$HOGAR/Descargas/print_agent/core/certs"; do
         if [ -f "$d/cert.pem" ] && [ -f "$d/key.pem" ]; then PREVIO="$d"; break; fi
     done
     if [ -z "$PREVIO" ]; then
         # macOS puede negarle al instalador leer Descargas o Escritorio (privacidad).
         # Si eso pasa, esto no encuentra nada y el runbook dice cómo copiarlo antes.
-        c="$(find "$HOGAR" -maxdepth 6 -type f -name cert.pem -path '*/core/certs/*' -print0 2>/dev/null \
+        c="$(find "$HOGAR" -maxdepth 8 -type f -name cert.pem -path '*/core/certs/*' -print0 2>/dev/null \
               | xargs -0 stat -f '%m %N' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)"
         if [ -n "$c" ] && [ -f "$(dirname "$c")/key.pem" ]; then PREVIO="$(dirname "$c")"; fi
     fi
@@ -63,6 +72,23 @@ if [ ! -f "$ESTADO/agent.conf" ]; then
 EOF
 fi
 
+# ── El lanzador viejo pasa a abrir el agente nuevo ────────────────────────────
+while IFS= read -r d; do
+    f="$d/impresora_mac.sh"
+    [ -n "$d" ] && [ -f "$f" ] || continue
+    grep -q 'atlas-print-agent instalado' "$f" && continue
+    cp -p "$f" "$f.retirado" || continue
+    cat > "$f" <<'EOF'
+#!/bin/bash
+# Esta Mac ya usa el atlas-print-agent instalado: arranca solo al iniciar sesión.
+# Este archivo solo lo abre (dirá "ya está activo"). El original quedó como .retirado.
+open -a "Atlas Print Agent"
+EOF
+    chmod 755 "$f"; chown "$USUARIO:$GRUPO" "$f" "$f.retirado" 2>/dev/null
+    echo "✓ Lanzador viejo convertido en atajo al agente nuevo: $f"
+done < "$LEGADO"
+rm -f "$LEGADO"
+
 # ── LaunchAgent ───────────────────────────────────────────────────────────────
 sed "s|__HOME__|$HOGAR|g" "$PLANTILLA" > "$PLIST" || falla "No se pudo escribir $PLIST"
 chown -R "$USUARIO:$GRUPO" "$ESTADO" "$LOGS"
@@ -82,6 +108,7 @@ ln -sfn "$APP" "$HOGAR/Desktop/Atlas Print Agent" 2>/dev/null \
 for _ in $(seq 1 30); do
     sleep 1
     H="$(curl -sk --noproxy '*' --max-time 2 https://127.0.0.1:9100/health 2>/dev/null)"
-    case "$H" in *'Atlas POS Print Agent'*) echo "✓ Agente respondiendo: $H"; exit 0 ;; esac
+    case "$H" in *"\"version\":\"$VERSION_ESPERADA\""*) echo "✓ Agente respondiendo: $H"; exit 0 ;; esac
 done
-falla "El agente quedó instalado pero NO respondió en https://127.0.0.1:9100/health"
+echo "  Quién tiene el puerto 9100:"; lsof -nP -iTCP:9100 -sTCP:LISTEN 2>/dev/null
+falla "El agente $VERSION_ESPERADA quedó instalado pero NO respondió en https://127.0.0.1:9100/health"

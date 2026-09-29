@@ -18,7 +18,7 @@
 [![ESC/POS](https://img.shields.io/badge/ESC%2FPOS-58%20·%2080%20mm-111111)](#)
 [![ZPL](https://img.shields.io/badge/ZPL-Zebra%20GX420t-0073AE)](#)
 [![Tkinter](https://img.shields.io/badge/App-Tkinter%20·%20PyInstaller-4B8BBE)](#)
-[![Tests](https://img.shields.io/badge/Tests-122%20etiquetas%20·%2027%20agente-success)](#)
+[![Tests](https://img.shields.io/badge/Tests-145%20etiquetas%20·%2061%20agente%203.1%20·%2027%20legado-success)](#)
 [![Plataformas](https://img.shields.io/badge/SO-Ubuntu%20·%20Windows%20·%20macOS-5A0FC8)](#)
 
 </div>
@@ -31,7 +31,7 @@ Dos herramientas independientes que comparten un objetivo: que el personal de ti
 
 | Pieza | Qué hace | Estado |
 |---|---|---|
-| 🖨️ **Agente de impresión** (`legacy/print_agent/`) | Corre en la PC de la caja, expone `https://localhost:9100` y escribe bytes ESC/POS crudos en la térmica por USB, red o Bluetooth. Lo llama el navegador; el ticket lo genera el backend del producto. | **v3.0.0 en producción.** Se está reestructurando en un paquete unificado — ver [Siguientes pasos](#-siguientes-pasos). |
+| 🖨️ **Agente de impresión** (`legacy/print_agent/`) | Corre en la PC de la caja, expone `https://localhost:9100` y escribe bytes ESC/POS crudos en la térmica por USB, red o Bluetooth. Lo llama el navegador; el ticket lo genera el backend del producto. | **v3.1.0 publicada** ([release](https://github.com/Ecamposg95/Atlas-Print-Agent/releases/tag/v3.1.0)): instaladores `.deb`, `.pkg` y `.exe` que dejan el agente arrancando solo. Primera caja Ubuntu convertida el 2026-09-28. Sigue pendiente el paquete unificado — ver [Siguientes pasos](#-siguientes-pasos). |
 | 🏷️ **App de etiquetas** (`atlas_labels/`) | Lee el catálogo que exporta Atlas One (`catalogo_YYYY-MM-DD.xlsx`) y manda etiquetas ZPL de 51 × 25 mm a una Zebra GX420t. CLI + app de escritorio con filtros, copias por fila y vista previa gráfica. | **En producción.** `.exe` de doble clic para Windows. |
 
 Cada producto (Atlas One, Atlas Rmazh, los que sigan) llevaba su propia copia del agente en `tools/print_agent/` y las copias ya habían divergido. Aquí se consolidan, para que un arreglo se haga una vez y sirva a todos.
@@ -155,7 +155,8 @@ Detalles, mapeo de columnas del catálogo y el uso desde WSL con el Python de Wi
 |---|---|
 | `atlas_labels/` | **Producción.** Paquete de etiquetas ZPL: `catalog` (lee el Excel), `barcode` (EAN-13 / Code 128), `zpl` + `render` (una sola fuente de layout para impresión y preview), `batch`, `printer`, `cli`, `gui`. |
 | `installers/labels/` | `build_exe.ps1`: empaqueta la app con PyInstaller y deja el acceso directo en el escritorio. |
-| `legacy/print_agent/` | **Producción.** Agente v3.0.0 importado tal cual desde Atlas One (la versión más reciente de las dos). Es la referencia durante la migración; no se le hacen features nuevas. |
+| `legacy/print_agent/` | **Producción.** Agente importado desde Atlas One (v3.0.0), con la excepción acotada del autoarranque que lo lleva a v3.1.0 (directorio de estado, `agent.conf`, `lanzador.py`). No se le hacen features nuevas. |
+| `installers/agent/` | Empaquetado y autoarranque: `construir.py`, prueba de humo, `.deb`/`.pkg`/`.exe`. Runbook en su [`README.md`](installers/agent/README.md). |
 | `legacy/tests/` | Tests autocontenidos de CORS y de nombres de cola, importados de Rmazh. Contra la base de Atlas One fallan 3 **a propósito** (ver abajo). |
 | `tests/labels/` | Suite de la app de etiquetas. |
 | `docs/superpowers/specs/` | Diseños aprobados: [agente unificado](docs/superpowers/specs/2026-09-21-atlas-print-agent-design.md), [etiquetas](docs/superpowers/specs/2026-09-21-etiquetas-zebra-design.md), [app v2](docs/superpowers/specs/2026-09-21-atlas-labels-gui-v2-design.md). |
@@ -200,8 +201,13 @@ uv run --no-project --with fastapi --with uvicorn --with pydantic --with cryptog
 1. Aprobar sección por sección el [diseño del agente unificado](docs/superpowers/specs/2026-09-21-atlas-print-agent-design.md) (§5.1 a §5.6).
 2. Escribir el plan de implementación.
 3. Reestructurar el agente en el paquete `atlas_print_agent/` con backends CUPS, spooler de Windows y Bluetooth SPP.
-4. Empaquetar con PyInstaller e instaladores nativos (`.deb`, `.exe`, `.pkg`) desde GitHub Actions.
-5. Cambiar el endpoint `download-agent` de cada producto para que redirija a las releases de este repo.
+4. ~~Empaquetar con PyInstaller e instaladores nativos (`.deb`, `.exe`, `.pkg`) desde GitHub Actions.~~ **Hecho**:
+   release [`v3.1.0`](https://github.com/Ecamposg95/Atlas-Print-Agent/releases/tag/v3.1.0), 2026-09-28.
+5. Cambiar el endpoint `download-agent` de cada producto para que redirija a las releases de este repo (peticiones
+   1–3 de [`docs/peticiones-a-atlas-one.md`](docs/peticiones-a-atlas-one.md)). **Urgente**: hoy el botón sigue
+   entregando el ZIP viejo.
+6. Probar en campo lo que falta del 3.1.0: ticket en la térmica (Ubuntu y Windows) y el `.pkg` en la Mac.
+7. Versión 3.1.1: excluir la Papelera de la búsqueda del certificado previo (hallazgo de campo, spec §14).
 
 ---
 

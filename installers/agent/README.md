@@ -61,6 +61,33 @@ sudo apt install ./atlas-print-agent_3.1.0_amd64.deb
   certificado); `sudo apt purge atlas-print-agent` borra también `/var/lib/atlas-print-agent`.
 - El ícono *Agente de Impresión Atlas* queda en el menú de aplicaciones.
 
+### 2.1 Colas de impresora en Ubuntu (térmica y Zebra)
+
+En Linux el agente imprime con `lp -d <cola> -` **sin** `-o raw` (`main.py`, `_print_unix`), así que **cada
+impresora necesita una cola CUPS raw**. Ubuntu da de alta sola las impresoras USB, pero **con driver**: a la
+Zebra le crea `ZTC-GX420t` con el driver ZPL de CUPS, que filtra el ZPL que manda Atlas One. Esa cola no sirve.
+
+```bash
+sudo lpinfo -v                     # debe listar usb://Zebra... y la térmica (p. ej. usb://SPRT/SP-EP...)
+ZEBRA=$(sudo lpinfo -v | grep -o 'usb://Zebra[^ ]*' | head -1)
+sudo lpadmin -p zebra -E -v "$ZEBRA" -m raw
+ls /etc/cups/ppd/                  # una cola raw NO tiene .ppd; las que sí tienen, llevan driver
+sudo lpadmin -x ZTC-GX420t         # borrar la cola automática con driver
+printf '^XA^FO50,50^A0N,50,50^FDPRUEBA^FS^XZ' | lp -d zebra -     # prueba directa
+```
+
+Hallazgos de campo (Eleven Boutique, Ubuntu 24.04, 2026-09-29):
+
+- **Si la Zebra no aparece en `lpinfo -v`, mira `lsusb` antes que CUPS.** Si tampoco sale ahí (ID `0a5f`,
+  `Zebra Technologies ZTC GX420t`), es físico. En esa caja cambiar el cable no bastó: **era el puerto USB**.
+  Conectada en otro puerto apareció al instante.
+- La térmica SPRT sale en `lsusb` como `0483:5720 STMicroelectronics Mass Storage Device`. El nombre engaña,
+  pero es la impresora.
+- Quedan colas duplicadas por impresora (la automática de Ubuntu, la del asistente del POS y la manual). **Antes
+  de borrar una, revisa cuál tiene configurada el POS**: `thermal80`, por ejemplo, la crea el asistente.
+- `/printers/detect` no conoce ni la Zebra ni la SPRT y les sugiere a las dos el nombre `thermal80` con papel de
+  80 mm. Crea las colas a mano, con nombres distintos.
+
 ## 3. macOS
 
 1. **Si esa Mac ya imprime en modo manual**, copiar antes su certificado para que el navegador no vuelva a pedir

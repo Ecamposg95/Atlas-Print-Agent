@@ -199,5 +199,7 @@ máquina.
 | Decidido | Los dos caminos conviven; `zpl`/`barcode`/`render` se quedan aquí como única fuente de verdad |
 | Bloqueado | El camino A, por dos cosas: si una llave de API sirve como bearer (§4.1) y qué columnas trae el CSV (§4.2). **Ambas se contestan con un solo `curl`** |
 | Hecho (2026-09-28) | Camino B probado de punta a punta: la UI de Atlas One imprime etiquetas en la Zebra a través del agente 3.1.0 |
+| Hecho (2026-09-29) | Zebra en **Ubuntu** (Eleven Boutique): la etiqueta de prueba sale por la cola raw `zebra`. Hizo falta una cola raw propia, porque la que crea Ubuntu lleva driver. Runbook en [`installers/agent/README.md`](../installers/agent/README.md) §2.1 |
+| Por mejorar | La pantalla de impresoras de Atlas One: lo aprendido en campo está en la petición 8 de [`peticiones-a-atlas-one.md`](peticiones-a-atlas-one.md) |
 | Por revisar | Cómo genera el ZPL el módulo de Atlas One (§3: que no duplique los codificadores) |
 | Siguiente paso | Correr el `curl` del §4.1 con una llave de API y, con el resultado, diseñar el camino A con la skill de brainstorming |

@@ -28,6 +28,7 @@ que no llega es la mejora. Cada petición dice qué pasa si se ignora.
 | 5 | Columnas de `labels.csv` | `atlas-one` | **Sin confirmar**: falta ver el CSV | Lo mismo que la #4 |
 | 6 | Pregunta sobre `assign-missing` | `atlas-one` | Pregunta, no cambio | — |
 | 7 | **Bluetooth: no ofrecerlo mientras no imprima** | `atlas-one`, `Atlas-Rmazh` | **Confirmado** — afecta a cajas reales hoy | — |
+| 8 | Pantalla de impresoras: rol por cola y avisos de Linux | `atlas-one` (frontend) | **Visto en campo** (2026-09-29) | Que una caja Ubuntu con Zebra se configure sin terminal |
 
 ---
 
@@ -189,6 +190,49 @@ exista, revertir esta petición es quitar el aviso.
 **Una advertencia técnica, por si alguien intenta el atajo:** en `legacy/tests/` hay un test que afirma que
 `BT:Impresora 58` pasa la validación de nombres. **Hacerlo verde ampliando el regex no arregla nada**: cambia un
 error visible por un fallo silencioso de spooler. El test afirma validación, no impresión.
+
+## Petición 8 — Pantalla de impresoras: rol por cola y avisos de Linux
+
+**Repo:** `atlas-one` (frontend, el módulo de etiquetas y la configuración de impresoras). **Estado: visto en
+campo el 2026-09-29**, en Eleven Boutique (Ubuntu 24.04, térmica SPRT y Zebra GX420t por USB, agente 3.1.0).
+
+**Qué pasó:** para que la Zebra imprimiera en esa caja hizo falta una hora de terminal. La causa fue un puerto
+USB malo, más una cola que Ubuntu creó con driver. Al final quedaron **cuatro colas para dos impresoras**:
+`termica` y `thermal80` para la térmica, `zebra` y `ZTC-GX420t` para la Zebra. Una de cada par imprime y la otra
+no, y la UI actual no da forma de saber cuál es cuál.
+
+**Todo lo necesario ya lo expone el agente, sin cambios en él** (contrato en
+[`integracion-agentes.md`](integracion-agentes.md)):
+
+| Endpoint | Qué trae que sirva aquí |
+|---|---|
+| `GET /diagnostics` | `queues[]` con `name`, `device_uri`, `is_raw`, `enabled` y `accepting` por cola (Linux y macOS) |
+| `GET /printers/detect` | Dispositivos USB y de red que ve CUPS, con su URI |
+| `POST /printers/install` | Crea una cola raw `{uri, queue_name}` |
+
+**Lo que pedimos, en orden de valor:**
+
+1. **Un rol por impresora: "Tickets" o "Etiquetas".** Mandar ZPL a la térmica imprime basura, y ESC/POS a la
+   Zebra también. Es la misma fila de la tabla del §7 de
+   [`etiquetas-desde-atlas-one.md`](etiquetas-desde-atlas-one.md), ahora vista en caja.
+2. **Marcar las colas con driver en Linux** (`is_raw: false` en `/diagnostics`) con un aviso del tipo "esta cola
+   no imprimirá bien: usa la raw". En Linux el agente no fuerza raw, así que una cola con driver es la causa
+   número uno de "no sale" o "sale basura".
+3. **Agrupar las colas que tienen el mismo `device_uri`** y recomendar la raw. Así la cajera no elige entre
+   `zebra` y `ZTC-GX420t` a ciegas.
+4. **Ofrecer "Crear cola raw"** con `/printers/detect` y `/printers/install` cuando una impresora solo tenga colas
+   con driver. **Ojo:** `/printers/detect` no reconoce la Zebra ni la SPRT y les sugiere a las dos `thermal80`
+   con papel de 80 mm. El nombre lo tiene que proponer la UI según el rol (`zebra` o `etiquetas` y `termica`),
+   nunca aceptar la sugerencia a ciegas. Además, `/printers/install` puede fallar por permisos desde el servicio
+   (punto abierto, §8 de [`installers/agent/README.md`](../installers/agent/README.md)); el error tiene que
+   mostrarse, no tragarse.
+5. **Mensaje útil cuando no hay Zebra:** "No se detecta la impresora de etiquetas. Revisa que esté encendida y
+   prueba **otro puerto USB**". En campo el cable no era; el puerto sí.
+
+**Si se ignora:** cada caja Ubuntu con Zebra necesita a alguien con terminal y el runbook §2.1.
+
+**Del lado del agente** quedan anotados para una versión futura, sin prisa: perfiles de `/printers/detect` para
+Zebra (`0a5f`, ZPL, rol etiquetas) y SPRT, y el rol en la respuesta. Nada de esto rompe la API v3.
 
 ---
 

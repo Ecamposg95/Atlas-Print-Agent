@@ -85,6 +85,8 @@ Hallazgos de campo (Eleven Boutique, Ubuntu 24.04, 2026-09-29):
   pero es la impresora.
 - Quedan colas duplicadas por impresora (la automática de Ubuntu, la del asistente del POS y la manual). **Antes
   de borrar una, revisa cuál tiene configurada el POS**: `thermal80`, por ejemplo, la crea el asistente.
+- Resultado: en esa caja salieron **la etiqueta de prueba en la Zebra y un ticket real en la térmica SPRT**.
+  Es la primera caja Ubuntu con las dos impresoras funcionando a través del agente 3.1.0.
 - `/printers/detect` no conoce ni la Zebra ni la SPRT y les sugiere a las dos el nombre `thermal80` con papel de
   80 mm. Crea las colas a mano, con nombres distintos.
 

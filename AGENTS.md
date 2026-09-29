@@ -97,6 +97,10 @@ python -m atlas_labels imprimir catalogo.xlsx --dry-run --impresora "ZDesigner G
 - **La Zebra en modo EPL.** Que la cola de Windows se llame `ZDesigner GX420t (EPL)` da igual — se imprime en
   RAW. Pero si no sale nada, la impresora está físicamente en EPL y hay que cambiarla con Zebra Setup Utilities.
   Antes de depurar código, descarta esto.
+- **En Linux cada impresora necesita una cola CUPS raw.** El agente no pasa `-o raw` en Linux, y Ubuntu da de alta
+  sola las USB con driver (`ZTC-GX420t` para la Zebra), que filtra el ZPL. Si una impresora no aparece en
+  `lpinfo -v`, revisa `lsusb` antes que el código: en Eleven Boutique era el puerto USB. Runbook:
+  `installers/agent/README.md` §2.1.
 - **Desde WSL, usa `python.exe`.** La Zebra cuelga del host Windows: el CLI y la app corren con el Python de
   Windows, con rutas `C:\...` y `PYTHONIOENCODING=utf-8` para que los acentos no salgan como `�`.
 - **`--dry-run` antes de cualquier lote.** Las copias por defecto son la columna `Stock`; el export completo de
